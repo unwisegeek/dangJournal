@@ -26,7 +26,7 @@ def main(screen):
         # Set variables and create the calendar
         calMonth = ["January", "February", "March", "April", "May",
                     "June", "July", "August", "September", "October",
-                 "November", "December"]
+                    "November", "December"]
         daysOfWeek = "Mo Tu We Th Fr Sa Su"
         cal = calendar.Calendar(0)
         uY = 4
