@@ -8,11 +8,11 @@ def main(screen):
     # Set variables and create the calendar
     calYear = 2018
     calMonth = ["January", "February", "March", "April", "May",
-             "June", "July", "August", "September", "October",
-             "November", "December"]
+                "June", "July", "August", "September", "October",
+                "November", "December"]
     daysOfWeek = "Mo Tu We Th Fr Sa Su"
     cal = calendar.Calendar(0)
-    uY = 1
+    uY = 4
     uX = 1
     counter = 1
 
@@ -37,7 +37,7 @@ def main(screen):
         uX += 24
         if counter == 4:
             uX = 1
-            uY += 12
+            uY += 11
             counter = 1
         else:
             counter += 1
@@ -45,9 +45,9 @@ def main(screen):
 
     # Draw Rectangles with 2 lines for the header, 6 lines for the body, 20 spaces wide programaticallY
     ## Reset the positioning variables
-    uY = 0
+    uY = 3
     uX = 0
-    lY = 11
+    lY = 14
     lX = 23
 
     for i in range(0, 3):  # Rows
@@ -57,11 +57,14 @@ def main(screen):
             uX += 24
             lX += 24
         # Increment y to drow on the next row
-        uY += 12
+        uY += 11
         uX = 0
-        lY += 12
+        lY += 11
         lX = 23
 
+    # Draw the Rectangle and Text for the Year Selector
+    rectangle(screen, 0, 0, 2, 95)
+    screen.addstr(1, 1, "{:^94s}".format("<    2018    >"))
 
     # Calendar draw is done, refresh, get a key press, and get out
     screen.refresh()
