@@ -12,15 +12,31 @@ def main(screen):
     calYear = curTime.year
     keyPress = ""
     cursorPosition = [-1, -1, -1]
+    currentDay = 0
     while keyPress != "q" and keyPress != "Q":
-        if keyPress == "KEY_RIGHT" and cursorPosition[2] == -1:
+        if keyPress == "KEY_RIGHT" and cursorPosition[0] == -1:
             calYear += 1
-        if keyPress == "KEY_LEFT" and cursorPosition[2] == -1:
+        if keyPress == "KEY_RIGHT" and cursorPosition[0] >= 0 and cursorPosition[2] < 6:
+            cursorPosition[2] += 1
+
+        if keyPress == "KEY_LEFT" and cursorPosition[0] == -1:
             calYear -= 1
-        if keyPress == "KEY_DOWN" and cursorPosition[2] == -1:
+        if keyPress == "KEY_LEFT" and cursorPosition[0] >= 0 and cursorPosition[2] > 0:
+            cursorPosition[2] -= 1
+
+        if keyPress == "KEY_DOWN" and cursorPosition[0] >= 0 and cursorPosition[1] < 5:
+            cursorPosition[1] += 1
+        if keyPress == "KEY_DOWN" and cursorPosition[0] == -1:
             cursorPosition = [0, 0, 0]
-        if keyPress == "KEY_UP" and cursorPosition[2] in range(0, 3):
+
+        if keyPress == "KEY_UP" and cursorPosition[0] > -1 and cursorPosition[1] == 0:
             cursorPosition = [-1, -1, -1]
+        if keyPress == "KEY_UP" and cursorPosition[0] > -1 and cursorPosition[1] > 0:
+            cursorPosition[1] -= 1
+        if keyPress == "]" and cursorPosition[0] > -1 and cursorPosition[0] < 11:
+            cursorPosition[0] += 1
+        if keyPress == "[" and cursorPosition[0] > -1 and cursorPosition[0] > 0:
+            cursorPosition[0] -= 1
 
         screen.clear()
         # Set variables and create the calendar
@@ -38,25 +54,19 @@ def main(screen):
         for i in range(0, len(calMonth)):
             weeks = cal.monthdayscalendar(calYear, i + 1)
             monthLength = len(calMonth[i])
-            screen.insstr(uY, uX, "{:^22s}".format(calMonth[i]))
-            screen.insstr(uY + 1, uX, "{:^22s}".format(daysOfWeek))
-            screen.insstr(uY + 2, uX, "{:~>22s}".format(""))
+            screen.insstr(uY, uX, "{:^21s}".format(calMonth[i]))
+            screen.insstr(uY + 1, uX, "{:^21s}".format(daysOfWeek))
+            screen.insstr(uY + 2, uX, "{:~>21s}".format(""))
             # We need to convert the week to a string
             for j in range(0, len(weeks)):
                 days = []
                 for k in range(0, len(weeks[j])):
-                    # if weeks[j][k] != 0:
-                    #     screen.insstr(uY+3+j, uX, "{:0>2}".format(str(weeks[j][k])))
-                    #     uX += 4
-                    # else:
-                    #     screen.insstr(uY+3+j, uX, "{}".format("  "))
-                    #     uX += 4
-                    # uX = 1
-                    if weeks[j][k] != 0:
-                        days.append(weeks[j][k])
+                    if weeks[j][k] != 0 and ( cursorPosition[0] == i and cursorPosition[1] == j and cursorPosition[2] == k):
+                        screen.insstr(uY+3+j, uX + (k * 3), " {:0>2}".format(str(weeks[j][k])), curses.A_REVERSE)
+                    elif weeks[j][k] != 0 and ( cursorPosition[0] != i or cursorPosition[1] != j or cursorPosition[2] != k ):
+                        screen.insstr(uY+3+j, uX + (k * 3), " {:0>2}".format(str(weeks[j][k])))
                     else:
-                        days.append("  ")
-                screen.insstr(uY+3+j, uX, " {:0>2} {:0>2} {:0>2} {:0>2} {:0>2} {:0>2} {:0>2}".format(days[0], days[1], days[2], days[3], days[4], days[5], days[6]))
+                        screen.insstr(uY+3+j, uX, " {:2}".format("  "))
             days = []
             uX += 24
             if counter == 4:
@@ -90,7 +100,9 @@ def main(screen):
         rectangle(screen, 0, 0, 2, 95)
         screen.addstr(1, 1, "{:^94s}".format("<    " + str(calYear) + "    >"))
 
-
+        if cursorPosition[0] != -1:
+            screen.addstr(39, 0, "  Calendar Date: {} {}, {}".format(calMonth[cursorPosition[0]], currentDay, calYear))
+        screen.addstr(40, 0, "Curser Position: {} {} {}".format(cursorPosition[0], cursorPosition[1], cursorPosition[2]))
 
         # Calendar draw is done, refresh, get a key press, and get out
         screen.refresh()
