@@ -8,11 +8,20 @@ import datetime
 def main(screen):
     screen = curses.initscr()
     screen.keypad(True)
+
+    # Set variables and create the calendar
+
     curTime = datetime.datetime.now()
-    calYear = curTime.year
     keyPress = ""
     cursorPosition = [-1, -1, -1]
     currentDay = 0
+    cal = calendar.Calendar(0)
+    calYear = curTime.year
+    calMonth = ["January", "February", "March", "April", "May",
+                "June", "July", "August", "September", "October",
+                "November", "December"]
+    daysOfWeek = "Mo Tu We Th Fr Sa Su"
+
     while keyPress != "q" and keyPress != "Q":
         if keyPress == "KEY_RIGHT" and cursorPosition[0] == -1:
             calYear += 1
@@ -33,21 +42,26 @@ def main(screen):
             cursorPosition = [-1, -1, -1]
         if keyPress == "KEY_UP" and cursorPosition[0] > -1 and cursorPosition[1] > 0:
             cursorPosition[1] -= 1
+        if keyPress == "]" and cursorPosition[0] > -1 and cursorPosition[0] == 11:
+            calYear += 1
+            cursorPosition = [0, 0, 0]
         if keyPress == "]" and cursorPosition[0] > -1 and cursorPosition[0] < 11:
             cursorPosition[0] += 1
+            cursorPosition[2] = 0
+        if keyPress == "[" and cursorPosition[0] > -1 and cursorPosition[0] == 0:
+            calYear -= 1
+            cursorPosition = [11, 0, 0]
         if keyPress == "[" and cursorPosition[0] > -1 and cursorPosition[0] > 0:
             cursorPosition[0] -= 1
+            cursorPosition[2] = 0
 
         screen.clear()
-        # Set variables and create the calendar
-        calMonth = ["January", "February", "March", "April", "May",
-                    "June", "July", "August", "September", "October",
-                    "November", "December"]
-        daysOfWeek = "Mo Tu We Th Fr Sa Su"
-        cal = calendar.Calendar(0)
+
         uY = 4
         uX = 1
         counter = 1
+
+        year = cal.yeardayscalendar(calYear, 12)
 
 
         # Programatically print the month, days of week, and divider
@@ -59,7 +73,6 @@ def main(screen):
             screen.insstr(uY + 2, uX, "{:~>21s}".format(""))
             # We need to convert the week to a string
             for j in range(0, len(weeks)):
-                days = []
                 for k in range(0, len(weeks[j])):
                     if weeks[j][k] != 0 and ( cursorPosition[0] == i and cursorPosition[1] == j and cursorPosition[2] == k):
                         screen.insstr(uY+3+j, uX + (k * 3), " {:0>2}".format(str(weeks[j][k])), curses.A_REVERSE)
@@ -67,7 +80,6 @@ def main(screen):
                         screen.insstr(uY+3+j, uX + (k * 3), " {:0>2}".format(str(weeks[j][k])))
                     else:
                         screen.insstr(uY+3+j, uX, " {:2}".format("  "))
-            days = []
             uX += 24
             if counter == 4:
                 uX = 1
