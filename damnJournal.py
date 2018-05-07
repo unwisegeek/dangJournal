@@ -11,113 +11,189 @@ def main(screen):
 
     # Set variables and create the calendar
 
-    curTime = datetime.datetime.now()
-    keyPress = ""
-    cursorPosition = [-1, -1, -1]
-    currentDay = 0
+    tmp_cursor_month = 0
+    cur_time = datetime.datetime.now()  # type: datetime
+    key_press = ""
+    cursor_position = [-2, -2, -2]
+    tmp_cursor_position = cursor_position
     cal = calendar.Calendar(0)
-    calYear = curTime.year
-    calMonth = ["January", "February", "March", "April", "May",
-                "June", "July", "August", "September", "October",
-                "November", "December"]
-    daysOfWeek = "Mo Tu We Th Fr Sa Su"
+    cal_year = cur_time.year
+    year = cal.yeardayscalendar(cal_year, 12)
+    cal_month = ["January", "February", "March", "April", "May",
+                 "June", "July", "August", "September", "October",
+                 "November", "December"]
+    days_of_week = "Mo Tu We Th Fr Sa Su"
 
-    while keyPress != "q" and keyPress != "Q":
-        if keyPress == "KEY_RIGHT" and cursorPosition[0] == -1:
-            calYear += 1
-        if keyPress == "KEY_RIGHT" and cursorPosition[0] >= 0 and cursorPosition[2] < 6:
-            cursorPosition[2] += 1
+    while key_press != "q" and key_press != "Q":
 
-        if keyPress == "KEY_LEFT" and cursorPosition[0] == -1:
-            calYear -= 1
-        if keyPress == "KEY_LEFT" and cursorPosition[0] >= 0 and cursorPosition[2] > 0:
-            cursorPosition[2] -= 1
+        if key_press == "y" or key_press == "Y":
+            cursor_position = [-2, -2, -2]
+            tmp_cursor_position = [-2, -2, -2]
 
-        if keyPress == "KEY_DOWN" and cursorPosition[0] >= 0 and cursorPosition[1] < 5:
-            cursorPosition[1] += 1
-        if keyPress == "KEY_DOWN" and cursorPosition[0] == -1:
-            cursorPosition = [0, 0, 0]
+        if key_press == "KEY_RIGHT":
+            if cursor_position[1] == -2 and cal_year < 9999:
+                cal_year += 1
+                year = cal.yeardayscalendar(cal_year, 12)
+            elif cursor_position[1] == -1 and cursor_position[0] < 11:
+                cursor_position[0] += 1
+            elif -1 <= cursor_position[0] and cursor_position[2] < 6:
+                tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
+                cursor_position[2] += 1
 
-        if keyPress == "KEY_UP" and cursorPosition[0] > -1 and cursorPosition[1] == 0:
-            cursorPosition = [-1, -1, -1]
-        if keyPress == "KEY_UP" and cursorPosition[0] > -1 and cursorPosition[1] > 0:
-            cursorPosition[1] -= 1
-        if keyPress == "]" and cursorPosition[0] > -1 and cursorPosition[0] == 11:
-            calYear += 1
-            cursorPosition = [0, 0, 0]
-        if keyPress == "]" and cursorPosition[0] > -1 and cursorPosition[0] < 11:
-            cursorPosition[0] += 1
-            cursorPosition[2] = 0
-        if keyPress == "[" and cursorPosition[0] > -1 and cursorPosition[0] == 0:
-            calYear -= 1
-            cursorPosition = [11, 0, 0]
-        if keyPress == "[" and cursorPosition[0] > -1 and cursorPosition[0] > 0:
-            cursorPosition[0] -= 1
-            cursorPosition[2] = 0
+        if key_press == "KEY_LEFT":
+            if cursor_position[1] == -2 and cal_year > 1:
+                cal_year -= 1
+                year = cal.yeardayscalendar(cal_year, 12)
+            elif cursor_position[1] == -1 and cursor_position[0] > 0:
+                cursor_position[0] -= 1
+            elif cursor_position[0] >= 0 and cursor_position[2] > 0:
+                tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
+                cursor_position[2] -= 1
+
+        if key_press == "KEY_DOWN":
+            if cursor_position[0] == -2:
+                if tmp_cursor_month != 0:
+                    cursor_position = [tmp_cursor_month, -1, -1]
+                else:
+                    cursor_position = [0, -1, -1]
+            elif cursor_position[1] == -1:
+                if cursor_position[0] > 0:
+                    cursor_position[1] = 0
+                    cursor_position[2] = 0
+                else:
+                    cursor_position = [0, 0, 0]
+            if cursor_position[0] >= 0 and -1 < cursor_position[1] < 5:
+                tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
+                cursor_position[1] += 1
+
+        if key_press == "KEY_UP":
+            if cursor_position[0] > -1 and cursor_position[1] == 0:
+                cursor_position[1] = -1
+                cursor_position[2] = -1
+            elif cursor_position[1] == -1:
+                tmp_cursor_month = cursor_position[0]
+                cursor_position = [-2, -2, -2]
+            elif cursor_position[0] > -1 and cursor_position[1] > 0:
+                tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
+                cursor_position[1] -= 1
+
+        # if key_press == "]":
+        #     # if -1 < cursor_position[0] == 11:
+        #     #     cal_year += 1
+        #     #     year = cal.yeardayscalendar(cal_year, 12)
+        #     #     cursor_position = [0, 0, 0]
+        #     #     tmp_cursor_position = [0, 0, 0]
+        #     if -1 < cursor_position[0] < 11:
+        #         tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
+        #         cursor_position[0] += 1
+        #         cursor_position[2] = 0
+        #
+        # if key_press == "[":
+        #     # if -1 < cursor_position[0] == 0:
+        #         # cal_year -= 1
+        #         # year = cal.yeardayscalendar(cal_year, 12)
+        #         # cursor_position = [11, 0, 0]
+        #         # tmp_cursor_position = [0, 0, 0]
+        #     if -1 < cursor_position[0] >= 1:
+        #         tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
+        #         cursor_position[0] -= 1
+        #         # cursor_position[1] = 0
+        #         # cursor_position[2] = 0
+
+        if cursor_position[1] > -1:
+            try:
+                test = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
+            except IndexError:
+                cursor_position = tmp_cursor_position
+                current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
+
+        current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
+
+        if cursor_position[1] > -1 and current_day == 0:
+            cursor_position = tmp_cursor_position
+
 
         screen.clear()
 
-        uY = 4
-        uX = 1
+        uy = 4
+        ux = 1
         counter = 1
 
-        year = cal.yeardayscalendar(calYear, 12)
-
-
         # Programatically print the month, days of week, and divider
-        for i in range(0, len(calMonth)):
-            weeks = cal.monthdayscalendar(calYear, i + 1)
-            monthLength = len(calMonth[i])
-            screen.insstr(uY, uX, "{:^21s}".format(calMonth[i]))
-            screen.insstr(uY + 1, uX, "{:^21s}".format(daysOfWeek))
-            screen.insstr(uY + 2, uX, "{:~>21s}".format(""))
+        for i in range(0, len(cal_month)):
+            weeks = cal.monthdayscalendar(cal_year, i + 1)
+            if cursor_position[0] == i and cursor_position[1] == -1:
+                screen.insstr(uy, ux, "{:^21s}".format(cal_month[i]), curses.A_REVERSE)
+            else:
+                screen.insstr(uy, ux, "{:^21s}".format(cal_month[i]))
+            screen.insstr(uy + 1, ux, "{:^21s}".format(days_of_week))
+            screen.insstr(uy + 2, ux, "{:~>21s}".format(""))
             # We need to convert the week to a string
             for j in range(0, len(weeks)):
                 for k in range(0, len(weeks[j])):
-                    if weeks[j][k] != 0 and ( cursorPosition[0] == i and cursorPosition[1] == j and cursorPosition[2] == k):
-                        screen.insstr(uY+3+j, uX + (k * 3), " {:0>2}".format(str(weeks[j][k])), curses.A_REVERSE)
-                    elif weeks[j][k] != 0 and ( cursorPosition[0] != i or cursorPosition[1] != j or cursorPosition[2] != k ):
-                        screen.insstr(uY+3+j, uX + (k * 3), " {:0>2}".format(str(weeks[j][k])))
-                    else:
-                        screen.insstr(uY+3+j, uX, " {:2}".format("  "))
-            uX += 24
+                    if weeks[j][k] == 0 and (
+                            cursor_position[0] == i and cursor_position[1] == j and cursor_position[2] == k):
+                        screen.insstr(uy + 3 + j, ux + (k * 3), " {:2}".format(" "), curses.A_REVERSE)
+                    elif weeks[j][k] == 0 and (
+                            cursor_position[0] != i or cursor_position[1] != j or cursor_position[2] != k):
+                        screen.insstr(uy + 3 + j, ux + (k * 3), " {:2}".format(" "))
+                    elif weeks[j][k] != 0 and (
+                            cursor_position[0] == i and cursor_position[1] == j and cursor_position[2] == k):
+                        screen.insstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])), curses.A_REVERSE)
+                    elif weeks[j][k] != 0 and (
+                            cursor_position[0] != i or cursor_position[1] != j or cursor_position[2] != k):
+                        screen.insstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])))
+            ux += 24
             if counter == 4:
-                uX = 1
-                uY += 11
+                ux = 1
+                uy += 11
                 counter = 1
             else:
                 counter += 1
 
-
-        # Draw Rectangles with 2 lines for the header, 6 lines for the body, 20 spaces wide programaticallY
-        ## Reset the positioning variables
-        uY = 3
-        uX = 0
-        lY = 14
-        lX = 23
+        # Draw Rectangles with 2 lines for the header, 6 lines for the body, 20 spaces wide programatically
+        # Reset the positioning variables
+        uy = 3
+        ux = 0
+        ly = 14
+        lx = 23
 
         for i in range(0, 3):  # Rows
             for j in range(0, 4):  # Columns. 4 rows of 3
-                rectangle(screen, uY, uX, lY, lX)
+                rectangle(screen, uy, ux, ly, lx)
                 # Increment x to draw the next column
-                uX += 24
-                lX += 24
+                ux += 24
+                lx += 24
             # Increment y to drow on the next row
-            uY += 11
-            uX = 0
-            lY += 11
-            lX = 23
+            uy += 11
+            ux = 0
+            ly += 11
+            lx = 23
 
         # Draw the Rectangle and Text for the Year Selector
         rectangle(screen, 0, 0, 2, 95)
-        screen.addstr(1, 1, "{:^94s}".format("<    " + str(calYear) + "    >"))
+        if cursor_position[0] == -2:
+            screen.addstr(1, 1, "{:^94s}".format("<    " + str(cal_year) + "    >"), curses.A_REVERSE)
+        else:
+            screen.addstr(1, 1, "{:^94s}".format("<    " + str(cal_year) + "    >"))
 
-        if cursorPosition[0] != -1:
-            screen.addstr(39, 0, "  Calendar Date: {} {}, {}".format(calMonth[cursorPosition[0]], currentDay, calYear))
-        screen.addstr(40, 0, "Curser Position: {} {} {}".format(cursorPosition[0], cursorPosition[1], cursorPosition[2]))
+        if cursor_position[0] > -1:
+            rectangle(screen, 37, 0, 40, 95)
+
+            current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
+            screen.addstr(39, 1,
+                          "  {} {}, {}".format(cal_month[cursor_position[0]], current_day, cal_year))
+        screen.addstr(50, 0,
+                      "Curser Position: {} {} {}".format(cursor_position[0], cursor_position[1], cursor_position[2]))
+        screen.addstr(51, 0,
+                      "  Temp Position: {} {} {}".format(tmp_cursor_position[0], tmp_cursor_position[1], tmp_cursor_position[2]))
+        screen.addstr(52, 0,
+                      "  Temp Position: {}".format(tmp_cursor_position))
+        screen.addstr(53, 0, "Temp Cursor: {}".format(tmp_cursor_month))
 
         # Calendar draw is done, refresh, get a key press, and get out
         screen.refresh()
-        keyPress = screen.getkey()
+        key_press = screen.getkey()
+
 
 wrapper(main)
