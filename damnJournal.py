@@ -77,29 +77,6 @@ def main(screen):
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
                 cursor_position[1] -= 1
 
-        # if key_press == "]":
-        #     # if -1 < cursor_position[0] == 11:
-        #     #     cal_year += 1
-        #     #     year = cal.yeardayscalendar(cal_year, 12)
-        #     #     cursor_position = [0, 0, 0]
-        #     #     tmp_cursor_position = [0, 0, 0]
-        #     if -1 < cursor_position[0] < 11:
-        #         tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
-        #         cursor_position[0] += 1
-        #         cursor_position[2] = 0
-        #
-        # if key_press == "[":
-        #     # if -1 < cursor_position[0] == 0:
-        #         # cal_year -= 1
-        #         # year = cal.yeardayscalendar(cal_year, 12)
-        #         # cursor_position = [11, 0, 0]
-        #         # tmp_cursor_position = [0, 0, 0]
-        #     if -1 < cursor_position[0] >= 1:
-        #         tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
-        #         cursor_position[0] -= 1
-        #         # cursor_position[1] = 0
-        #         # cursor_position[2] = 0
-
         if cursor_position[1] > -1:
             try:
                 test = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
@@ -177,12 +154,12 @@ def main(screen):
         else:
             screen.addstr(1, 1, "{:^94s}".format("<    " + str(cal_year) + "    >"))
 
-        if cursor_position[0] > -1:
-            rectangle(screen, 37, 0, 40, 95)
-
+        if cursor_position[1] > -1:
+            rectangle(screen, 37, 0, 39, 95)
             current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
-            screen.addstr(39, 1,
-                          "  {} {}, {}".format(cal_month[cursor_position[0]], current_day, cal_year))
+            datestamp = cal_month[cursor_position[0]] + " " + str(current_day) + ", " + str(cal_year)
+            screen.addstr(38, 1,
+                          "{:^94s}".format(datestamp))
         screen.addstr(50, 0,
                       "Curser Position: {} {} {}".format(cursor_position[0], cursor_position[1], cursor_position[2]))
         screen.addstr(51, 0,
