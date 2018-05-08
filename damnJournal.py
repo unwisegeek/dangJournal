@@ -59,12 +59,22 @@ def main(screen):
             elif cursor_position[1] == -1:
                 if cursor_position[0] > 0:
                     cursor_position[1] = 0
-                    cursor_position[2] = 0
+                    cursor_position[2] = next((i for i, x in enumerate(year[0][cursor_position[0]][0]) if x), None)
                 else:
-                    cursor_position = [0, 0, 0]
-            if cursor_position[0] >= 0 and -1 < cursor_position[1] < 5:
+                    cursor_position[0] = 0
+                    cursor_position[1] = 0
+                    cursor_position[2] = next((i for i, x in enumerate(year[0][cursor_position[0]][0]) if x), None)
+
+            elif cursor_position[0] >= 0 and -1 < cursor_position[1] <= (len(year[0][cursor_position[1]]) - 1):
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
-                cursor_position[1] += 1
+
+                if year[0][cursor_position[0]][0][cursor_position[2]] == 0:
+                    b = cursor_position[1] + 1
+                    for i, item in enumerate(year[0][cursor_position[0]][b]):
+                        if item != 0:
+                            cursor_position[2] = i
+                else:
+                    cursor_position[1] += 1
 
         if key_press == "KEY_UP":
             if cursor_position[0] > -1 and cursor_position[1] == 0:
@@ -75,7 +85,12 @@ def main(screen):
                 cursor_position = [-2, -2, -2]
             elif cursor_position[0] > -1 and cursor_position[1] > 0:
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
-                cursor_position[1] -= 1
+                b = cursor_position[1] - 1
+                if year[0][cursor_position[0]][b][cursor_position[2]] == 0:
+                    cursor_position[1] -= 1
+                    cursor_position[2] = next((i for i, x in enumerate(year[0][cursor_position[0]][b]) if x), None)
+                else:
+                    cursor_position[1] -= 1
 
         if cursor_position[1] > -1:
             try:
