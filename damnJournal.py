@@ -3,6 +3,8 @@ from curses import wrapper
 from curses.textpad import rectangle
 import calendar
 import datetime
+# import pydevd
+# pydevd.settrace('localhost', 'port=5005')
 
 
 def main(screen):
@@ -25,6 +27,7 @@ def main(screen):
     days_of_week = "Mo Tu We Th Fr Sa Su"
 
     while key_press != "q" and key_press != "Q":
+        error = 0
 
         if key_press == "y" or key_press == "Y":
             cursor_position = [-2, -2, -2]
@@ -65,16 +68,19 @@ def main(screen):
                     cursor_position[1] = 0
                     cursor_position[2] = next((i for i, x in enumerate(year[0][cursor_position[0]][0]) if x), None)
 
-            elif cursor_position[0] >= 0 and -1 < cursor_position[1] <= (len(year[0][cursor_position[1]]) - 1):
+            elif cursor_position[0] > -1 and -1 < cursor_position[1] <= (len(year[0][cursor_position[0]][cursor_position[1]]) + 1):
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
-
-                if year[0][cursor_position[0]][0][cursor_position[2]] == 0:
-                    b = cursor_position[1] + 1
-                    for i, item in enumerate(year[0][cursor_position[0]][b]):
-                        if item != 0:
-                            cursor_position[2] = i
-                else:
-                    cursor_position[1] += 1
+                try:
+                    if year[0][cursor_position[0]][cursor_position[1] + 1][cursor_position[2]] == 0:
+                        b = cursor_position[1] + 1
+                        for i, item in enumerate(year[0][cursor_position[0]][b]):
+                            if item != 0:
+                                cursor_position[2] = i
+                        cursor_position[1] += 1
+                    else:
+                        cursor_position[1] += 1
+                except:
+                    cursor_position = tmp_cursor_position
 
         if key_press == "KEY_UP":
             if cursor_position[0] > -1 and cursor_position[1] == 0:
@@ -83,7 +89,7 @@ def main(screen):
             elif cursor_position[1] == -1:
                 tmp_cursor_month = cursor_position[0]
                 cursor_position = [-2, -2, -2]
-            elif cursor_position[0] > -1 and cursor_position[1] > 0:
+            elif cursor_position[0] > -1 and cursor_position[1] >= 0:
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
                 b = cursor_position[1] - 1
                 if year[0][cursor_position[0]][b][cursor_position[2]] == 0:
@@ -96,6 +102,7 @@ def main(screen):
             try:
                 test = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
             except IndexError:
+                error = 1
                 cursor_position = tmp_cursor_position
                 current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
 
@@ -135,6 +142,9 @@ def main(screen):
                     elif weeks[j][k] != 0 and (
                             cursor_position[0] != i or cursor_position[1] != j or cursor_position[2] != k):
                         screen.insstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])))
+
+
+            # Increment the X position of the written text, then if the counter has reached 4, move down to next Y.
             ux += 24
             if counter == 4:
                 ux = 1
@@ -181,8 +191,9 @@ def main(screen):
                       "  Temp Position: {} {} {}".format(tmp_cursor_position[0], tmp_cursor_position[1], tmp_cursor_position[2]))
         screen.addstr(52, 0,
                       "  Temp Position: {}".format(tmp_cursor_position))
-        screen.addstr(53, 0, "Temp Cursor: {}".format(tmp_cursor_month))
-
+        screen.addstr(53, 0, 'Temp Cursor: {}'.format(tmp_cursor_month))
+        if error == 1:
+            screen.addstr(54, 0, 'Error occurred.')
         # Calendar draw is done, refresh, get a key press, and get out
         screen.refresh()
         key_press = screen.getkey()
