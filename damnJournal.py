@@ -5,17 +5,6 @@ import calendar
 import datetime
 import os
 
-class color:
-   PURPLE = '\033[95m'
-   CYAN = '\033[96m'
-   DARKCYAN = '\033[36m'
-   BLUE = '\033[94m'
-   GREEN = '\033[92m'
-   YELLOW = '\033[93m'
-   RED = '\033[91m'
-   BOLD = '\033[1m'
-   UNDERLINE = '\033[4m'
-   END = '\033[0m'
 
 def main(screen):
     screen = curses.initscr()
@@ -55,7 +44,7 @@ def main(screen):
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(cursor_position[0] + 1), str(day))
             os.system("nano " + filename)
 
-        if (key_press == "d" or key_press == "D") and cursor_position[1] >= 0:  # Manages Edit function
+        if (key_press == "r" or key_press == "R") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(cursor_position[0] + 1), str(day))
             if os.path.isfile(filename):
@@ -251,15 +240,20 @@ def main(screen):
             if os.path.isfile(filename):
                 screen.addstr(38, 1,
                               "{:^94s}".format(datestamp), curses.color_pair(3))
-                # rectangle(screen, 39, 0, 51, 95)
-                # preview = open(filename, 'r')
-                # data = [line.split('\n') for line in preview.readlines()]
-                # if len(data) <= 5:
-                #     for i in range(0, len(data)):
-                #         screen.addstr(40 + i, 1, str(data[i]))
-                # if len(data) >= 5:
-                #     for i in range(0, 5):
-                #         screen.addstr(40 + i, 1, str(data[i]))
+                rectangle(screen, 39, 0, 51, 95)
+                textbox = [word for line in open(filename, 'r') for word in line.split()]
+                wordwrap = 1
+                line = 40
+                col = 3
+                for i in range(0, len(textbox)):
+                    wordwrap += len(textbox[i]) + 1
+                    if wordwrap > 85:
+                        line += 1
+                        wordwrap = 0
+                        col = 3
+                    if line < 51:
+                        screen.addstr(line, col, str(textbox[i]))
+                        col += len(textbox[i]) + 1
             else:
                 screen.addstr(38, 1,
                               "{:^94s}".format(datestamp))
@@ -267,6 +261,7 @@ def main(screen):
         # Calendar draw is done, refresh, get a key press, and get out
         screen.refresh()
         key_press = screen.getkey()
+    screen.clear()
 
 
 wrapper(main)
