@@ -1,10 +1,6 @@
-import curses
+import curses, calendar, datetime, os
 from curses import wrapper
 from curses.textpad import rectangle
-import calendar
-import datetime
-import os
-
 
 def dimensions(chkscreen):
     chkscreen = curses.initscr()
@@ -276,6 +272,24 @@ def main(screen):
         screen.refresh()
         key_press = screen.getkey()
     screen.clear()
+
+
+# Check for first run items.
+conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
+if not os.path.isdir(conf_directory):
+    print("Welcome to damnJournal, of the Crass Office Suite. As a one time process, "
+          "we're creating your configuration directory.")
+    os.makedirs(conf_directory)
+    if not os.path.isdir(conf_directory):
+        print("Something went wrong. Please ensure damnJournal is running with permissions"
+              "to create {}".format(filename))
+
+passwd_file = conf_directory + "00000000.dat"
+if not os.path.isfile(passwd_file):
+    print("damnJournal will password protect and encode your journal entries. Please make a secure note of this"
+          "password, as it can not be recovered under any circumstances.")
+    pass1 = input("Please enter a password:" )
+    pass2 = input("Please confirm the password: ")
 
 
 if dimensions:
