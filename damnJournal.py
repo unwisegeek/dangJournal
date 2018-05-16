@@ -6,6 +6,17 @@ import datetime
 import os
 
 
+def dimensions(chkscreen):
+    chkscreen = curses.initscr()
+    max_x = curses.COLS - 1
+    max_y = curses.LINES - 1
+
+    if max_x < 100 or max_y < 40:
+        return False
+    else:
+        return True
+
+
 def main(screen):
     screen = curses.initscr()
     curses.start_color()
@@ -13,27 +24,30 @@ def main(screen):
     screen.keypad(True)
 
     # Set variables and create the calendar
-
+    max_x = curses.COLS - 1
+    max_y = curses.LINES - 1
     tmp_cursor_month = 0  # This value stores the month when navigating up to the year selector.
     cur_time = datetime.datetime.now()  # type: datetime
     key_press = ""
-    cursor_position = [-2, -2, -2] # Initializes cursor_position at the year selector
-    tmp_cursor_position = cursor_position # Initializes a temporary cursor position variable for error recovery
+    cursor_position = [-2, -2, -2]  # Initializes cursor_position at the year selector
+    tmp_cursor_position = cursor_position  # Initializes a temporary cursor position variable for error recovery
     cal = calendar.Calendar(0)
     cal_year = cur_time.year
     year = cal.yeardayscalendar(cal_year, 12)
     cal_month = ["January", "February", "March", "April", "May",
                  "June", "July", "August", "September", "October",
                  "November", "December"]  # List of names to draw on for Calendar months
-    days_of_week = "Mo Tu We Th Fr Sa Su"  # String to be printed for each calendar
-    filename = ""
-    home = os.system("echo $HOME")
-    dir = os.environ['HOME'] + "/.damnJournal/"
+    days_of_week = " Mo Tu We Th Fr Sa Su"  # String to be printed for each calendar
+    conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
     curses.init_pair(2, 0, 7)
     curses.init_pair(3, 6, 0)
 
     while key_press != "q" and key_press != "Q":
-        error = 0
+
+        # Check for Terminal resizing
+        if curses.is_term_resized(max_y, max_x):
+            max_x = curses.COLS - 1
+            max_y = curses.LINES - 1
 
         if key_press == "y" or key_press == "Y":  # Gives option to return to year selector in navigation
             cursor_position = [-2, -2, -2]
@@ -41,18 +55,18 @@ def main(screen):
 
         if (key_press == "e" or key_press == "E") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
-            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(cursor_position[0] + 1), str(day))
+            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
             os.system("nano " + filename)
 
         if (key_press == "r" or key_press == "R") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
-            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(cursor_position[0] + 1), str(day))
+            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
             if os.path.isfile(filename):
                 os.system("mv -f {} {}.old".format(filename, filename))
 
         if (key_press == "u" or key_press == "U") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
-            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(cursor_position[0] + 1), str(day))
+            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
             if os.path.isfile("{}.old".format(filename)):  # Verify if file to undelete exists
                 if os.path.isfile(filename):  # Check if new content has been added
                     os.system("cat {}.old >> {}".format(filename, filename))  # Append old file to new file
@@ -69,7 +83,6 @@ def main(screen):
                 cal_year -= 100
             if key_press[4] == "7" and cal_year < 100:
                 cal_year = 1
-
 
         if key_press == "KEY_RIGHT" or key_press == "C":  # Manages the Right Arrow key press
             if cursor_position[1] == -2 and cal_year < 9999:  # Selector is on Year
@@ -106,7 +119,8 @@ def main(screen):
                     cursor_position[1] = 0
                     cursor_position[2] = next((i for i, x in enumerate(year[0][cursor_position[0]][0]) if x), None)
 
-            elif cursor_position[0] > -1 and -1 < cursor_position[1] <= (len(year[0][cursor_position[0]][cursor_position[1]]) + 1):
+            elif not (not (cursor_position[0] > -1) or not (
+                    -1 < cursor_position[1] <= (len(year[0][cursor_position[0]][cursor_position[1]]) + 1))):
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
                 try:
                     if year[0][cursor_position[0]][cursor_position[1] + 1][cursor_position[2]] == 0:
@@ -141,9 +155,7 @@ def main(screen):
             try:
                 test = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
             except IndexError:
-                error = 1
                 cursor_position = tmp_cursor_position
-                current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
 
         # One last check to ensure the cursor isn't on a zero-day.
         current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
@@ -153,7 +165,7 @@ def main(screen):
         # Clear the screen, and reset the values back to base for drawing text and shapes.
         screen.clear()
 
-        uy = 4
+        uy = 3
         ux = 1
         counter = 1
 
@@ -166,7 +178,7 @@ def main(screen):
             else:
                 screen.insstr(uy, ux, "{:^21s}".format(cal_month[i]))
             screen.insstr(uy + 1, ux, "{:^21s}".format(days_of_week))
-            screen.insstr(uy + 2, ux, "{:~>21s}".format(""))
+            screen.insstr(uy + 2, ux, " {:~>20s}".format(""))
             # We need to convert the week to a string
             for j in range(0, len(weeks)):
                 for k in range(0, len(weeks[j])):
@@ -181,36 +193,37 @@ def main(screen):
 
                     elif weeks[j][k] != 0 and (
                             cursor_position[0] == i and cursor_position[1] == j and cursor_position[2] == k):
-                        filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(i + 1), str(weeks[j][k]))
+                        filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(i + 1), str(weeks[j][k]))
                         if os.path.isfile(filename):
                             screen.addstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])),
                                           curses.color_pair(1))
                         else:
-                            screen.addstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])), curses.color_pair(2))
+                            screen.addstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])),
+                                          curses.color_pair(2))
 
                     elif weeks[j][k] != 0 and (
                             cursor_position[0] != i or cursor_position[1] != j or cursor_position[2] != k):
-                        filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(i + 1), str(weeks[j][k]))
+                        filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(i + 1), str(weeks[j][k]))
                         if os.path.isfile(filename):
-                            screen.addstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])), curses.color_pair(3))
+                            screen.addstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])),
+                                          curses.color_pair(3))
                         else:
                             screen.addstr(uy + 3 + j, ux + (k * 3), " {:0>2}".format(str(weeks[j][k])))
-
 
             # Increment the X position of the written text, then if the counter has reached 4, move down to next Y.
             ux += 24
             if counter == 4:
                 ux = 1
-                uy += 11
+                uy += 10
                 counter = 1
             else:
                 counter += 1
 
-        # Draw Rectangles with 2 lines for the header, 6 lines for the body, 20 spaces wide programatically
+        # Draw Rectangles with 3 lines for the header, 6 lines for the body, 20 spaces wide programmatically
         # Reset the positioning variables
-        uy = 3
+        uy = 2
         ux = 0
-        ly = 14
+        ly = 12
         lx = 23
 
         for i in range(0, 3):  # Rows
@@ -219,10 +232,10 @@ def main(screen):
                 # Increment x to draw the next column
                 ux += 24
                 lx += 24
-            # Increment y to drow on the next row
-            uy += 11
+            # Increment y to draw on the next row
+            uy += 10
             ux = 0
-            ly += 11
+            ly += 10
             lx = 23
 
         # Draw the Rectangle and Text for the Year Selector
@@ -233,17 +246,18 @@ def main(screen):
             screen.addstr(1, 1, "{:^94s}".format("<    " + str(cal_year) + "    >"))
 
         if cursor_position[1] > -1:
-            rectangle(screen, 37, 0, 39, 95)
+            rectangle(screen, 32, 0, 34, 95)
             current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
-            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(dir, str(cal_year), str(cursor_position[0] + 1), str(current_day))
+            filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(
+                conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             datestamp = cal_month[cursor_position[0]] + " " + str(current_day) + ", " + str(cal_year)
             if os.path.isfile(filename):
-                screen.addstr(38, 1,
+                screen.addstr(33, 1,
                               "{:^94s}".format(datestamp), curses.color_pair(3))
-                rectangle(screen, 39, 0, 51, 95)
+                rectangle(screen, 34, 0, max_y, 95)
                 textbox = [word for line in open(filename, 'r') for word in line.split()]
                 wordwrap = 1
-                line = 40
+                line = 35
                 col = 3
                 for i in range(0, len(textbox)):
                     wordwrap += len(textbox[i]) + 1
@@ -251,11 +265,11 @@ def main(screen):
                         line += 1
                         wordwrap = 0
                         col = 3
-                    if line < 51:
+                    if line < max_y:
                         screen.addstr(line, col, str(textbox[i]))
                         col += len(textbox[i]) + 1
             else:
-                screen.addstr(38, 1,
+                screen.addstr(33, 1,
                               "{:^94s}".format(datestamp))
 
         # Calendar draw is done, refresh, get a key press, and get out
@@ -264,4 +278,7 @@ def main(screen):
     screen.clear()
 
 
-wrapper(main)
+if dimensions:
+    wrapper(main)
+else:
+    print("damnJournal requires a terminal at least 95 characters wide, and 40 characters tall.")
