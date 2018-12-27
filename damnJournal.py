@@ -1,4 +1,4 @@
-import curses, calendar, datetime, os
+import curses, calendar, datetime, os, rncryptor, sys
 from curses import wrapper
 from curses.textpad import rectangle
 
@@ -278,19 +278,36 @@ def main(screen):
 conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
 if not os.path.isdir(conf_directory):
     print("Welcome to damnJournal, of the Crass Office Suite. As a one time process, "
-          "we're creating your configuration directory.")
+          "we are creating a configuration directory at {}").format(conf_directory)
     os.makedirs(conf_directory)
     if not os.path.isdir(conf_directory):
         print("Something went wrong. Please ensure damnJournal is running with permissions"
-              "to create {}".format(filename))
+              "to create {}".format(conf_directory))
 
 passwd_file = conf_directory + "00000000.dat"
 if not os.path.isfile(passwd_file):
     print("damnJournal will password protect and encode your journal entries. Please make a secure note of this"
           "password, as it can not be recovered under any circumstances.")
-    pass1 = input("Please enter a password:" )
-    pass2 = input("Please confirm the password: ")
-
+    print("")
+    pass1 = str(raw_input("Please enter a password: "))
+    pass2 = str(raw_input("Please confirm the password: "))
+    while pass1 != pass2:
+        print("Passwords do not match. Please try again.")
+	print("")
+        pass1 = str(raw_input("Please enter a password: "))
+        pass2 = str(raw_input("Please confirm the password: "))
+    # We now have matching passwords. Write the encrypted password to the passwd_file location
+    data = pass1
+    password = pass2
+    cryptor = rncryptor.RNCryptor()
+    encrypted_data = cryptor.encrypt(data, password)
+    try:
+        openfile = open(passwd_file, 'w')
+        openfile.write(encrypted_data)
+        openfile.close
+    except IOError:
+	print("Unable to write to {}. Please check the directory permissions and try again.").format(conf_directory)
+        sys.exit()
 
 if dimensions:
     wrapper(main)
