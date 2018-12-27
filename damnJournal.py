@@ -1,6 +1,7 @@
-import curses, calendar, datetime, os, rncryptor, sys
+import curses, calendar, datetime, os, sys, getpass, textwrap
 from curses import wrapper
 from curses.textpad import rectangle
+from simplecrypt import encrypt, decrypt
 
 def dimensions(chkscreen):
     chkscreen = curses.initscr()
@@ -12,12 +13,12 @@ def dimensions(chkscreen):
     else:
         return True
 
-
 def main(screen):
     screen = curses.initscr()
     curses.start_color()
     curses.use_default_colors()
     screen.keypad(True)
+
 
     # Set variables and create the calendar
     max_x = curses.COLS - 1
@@ -251,19 +252,28 @@ def main(screen):
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp), curses.color_pair(3))
                 rectangle(screen, 34, 0, max_y, 95)
-                textbox = [word for line in open(filename, 'r') for word in line.split()]
+                openfile = open(filename, 'r')
+                contents = textwrap.wrap(decrypt(password, openfile.read()), width = 85, replace_whitespace = False)
+                formatted_contents = []
+                for i in range(0, len(contents)):
+                    formatted_contents = formatted_contents + str.splitlines(contents[i])
+                # textbox = [word for line in contents for word in line.split()]
                 wordwrap = 1
                 line = 35
                 col = 3
-                for i in range(0, len(textbox)):
-                    wordwrap += len(textbox[i]) + 1
-                    if wordwrap > 85:
-                        line += 1
-                        wordwrap = 0
-                        col = 3
-                    if line < max_y:
-                        screen.addstr(line, col, str(textbox[i]))
-                        col += len(textbox[i]) + 1
+                # 
+                # for i in range(0, len(textbox)):
+                #     wordwrap += len(textbox[i]) + 1
+                #     if wordwrap > 85:
+                #         line += 1
+                #         wordwrap = 0
+                #         col = 3
+                #     if line < max_y:
+                #         screen.addstr(line, col, str(textbox[i]))
+                #         col += len(textbox[i]) + 1
+                for i in range(0, len(formatted_contents)):
+                    if i < 20:
+                        screen.addstr(i + 36, 3, formatted_contents[i])
             else:
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp))
@@ -275,6 +285,8 @@ def main(screen):
 
 
 # Check for first run items.
+
+# Check if configuration directory exists. If not, run the first run greeter.
 conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
 if not os.path.isdir(conf_directory):
     print("Welcome to damnJournal, of the Crass Office Suite. As a one time process, "
@@ -284,30 +296,69 @@ if not os.path.isdir(conf_directory):
         print("Something went wrong. Please ensure damnJournal is running with permissions"
               "to create {}".format(conf_directory))
 
+# Check if password file exists. If not, set the password.
 passwd_file = conf_directory + "00000000.dat"
 if not os.path.isfile(passwd_file):
     print("damnJournal will password protect and encode your journal entries. Please make a secure note of this"
           "password, as it can not be recovered under any circumstances.")
     print("")
-    pass1 = str(raw_input("Please enter a password: "))
-    pass2 = str(raw_input("Please confirm the password: "))
+    pass1 = str(getpass.getpass(prompt='Password: '))
+    pass2 = str(getpass.getpass(prompt='Confirm Password: '))
     while pass1 != pass2:
         print("Passwords do not match. Please try again.")
 	print("")
-        pass1 = str(raw_input("Please enter a password: "))
-        pass2 = str(raw_input("Please confirm the password: "))
+        pass1 = str(getpass.getpass(prompt='Password: '))
+        pass2 = str(getpass.getpass(prompt='Confirm Password: '))
     # We now have matching passwords. Write the encrypted password to the passwd_file location
-    data = pass1
-    password = pass2
-    cryptor = rncryptor.RNCryptor()
-    encrypted_data = cryptor.encrypt(data, password)
+
+    password = pass1
+    encrypted_data = encrypt(password, "Confirmed")
     try:
         openfile = open(passwd_file, 'w')
+        openfile.write(encrypted_data)
+        openfile.close
+        openfile = open(conf_directory + "20180513.dat", 'w')
+        sample_entry = """Dear Diary,
+
+Today I was pompous and my sister was crazy. Today we were kidnapped by hillfolk never to be seen again.
+
+It was the best day ever."""
+        encrypted_data = encrypt(password, sample_entry)
         openfile.write(encrypted_data)
         openfile.close
     except IOError:
 	print("Unable to write to {}. Please check the directory permissions and try again.").format(conf_directory)
         sys.exit()
+    print("First run tasks complete. damnJournal will now exit.")
+    sys.exit()
+
+
+# Check the Password, start by opening the password file and pulling in the encrypted data.
+openfile = open(passwd_file, 'r') # Open the password file.
+enc_data = openfile.read() # Read the encoded data.
+openfile.close() # Filestream is no longer needed. Closing.
+
+password = getpass.getpass() # Prompt for the passowrd.
+# Check the password against the confirmation file. If not, reprompt three times.
+reprompt = 0
+
+confirmed = decrypt(password, enc_data)
+
+while confirmed != "Confirmed":
+    try:
+        confirmed = decrypt(password, enc_data)
+    except simplecrypt.DecryptionException:
+        print("Password incorrect.")
+        confirmed = ""
+        reprompt += 1
+    if confirmed is not "Confirmed" and reprompt < 3:
+        reprompt = reprompt + 1
+        print("Password incorrect. Retry count: {}").format(str(reprompt))
+        password = str(getpass.getpass())
+    else:
+        print("Failed to enter the correct password. Exiting.")
+        sys.exit()
+
 
 if dimensions:
     wrapper(main)
