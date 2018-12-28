@@ -1,4 +1,4 @@
-import curses, calendar, datetime, os, sys, getpass, textwrap
+import curses, calendar, datetime, os, sys, getpass, textwrap, string, random
 from curses import wrapper
 from curses.textpad import rectangle
 from simplecrypt import encrypt, decrypt
@@ -12,6 +12,9 @@ def dimensions(chkscreen):
         return False
     else:
         return True
+
+def tmp_generate(size=5, chars=string.ascii_lowercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
 
 def main(screen):
     screen = curses.initscr()
@@ -53,7 +56,34 @@ def main(screen):
         if (key_press == "e" or key_press == "E") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
-            os.system("nano " + filename)
+            tmpfile = '/tmp/dj_' + tmp_generate()
+            if os.path.isfile(filename):
+                openfile = open(filename, 'r')
+                contents = decrypt(password, openfile.read()) # Get contents of current file
+                openfile.close()
+                openfile = open(tmpfile, 'w')
+                openfile.write(contents)
+                openfile.close()
+                os.system("editor " + tmpfile)
+                openfile = open(tmpfile, 'r')
+                contents = encrypt(password, openfile.read())
+                openfile.close()
+                openfile = open(filename, 'w')
+                openfile.write(contents)
+                openfile.close()
+                os.system("rm -f {}".format(tmpfile))
+            else:
+                openfile = open(tmpfile, 'w')
+                openfile.write("")
+                openfile.close()
+                os.system("editor " + tmpfile)
+                openfile = open(tmpfile, 'r')
+                contents = encrypt(password, openfile.read())
+                openfile.close()
+                openfile = open(filename, 'w')
+                openfile.write(contents)
+                openfile.close()
+                os.system("rm -f {}".format(tmpfile))
 
         if (key_press == "r" or key_press == "R") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
