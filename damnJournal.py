@@ -1,4 +1,5 @@
-import curses, calendar, datetime, os, sys, getpass, textwrap, string, random
+
+import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt
 from curses import wrapper
 from curses.textpad import rectangle
 from simplecrypt import encrypt, decrypt
@@ -15,6 +16,44 @@ def dimensions(chkscreen):
 
 def tmp_generate(size=5, chars=string.ascii_lowercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
+
+def configure( config_exists):
+    choice = ""
+    if config_exists:
+        print("Not quite yet.")
+    else:
+        config = configparser.ConfigParser()
+        config['Options'] = {}
+        print("Starting configuration.\n\ndamnJournal has three different methods by which to store your journal entries.\n\n"
+              "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
+              "2. Encoded.....Base64 encoded. Protects only against the most casual of attacks.\n"
+              "3. Encrypted...AES encryption based on the simple-crypt library. Much slower. Previews are recommended turned off.\n\n"
+              "Once decided, all future operations with damnJournal will depend on this setting. Please read the manual for guidance on \n"
+              "how to migreate from one entry schema to another.\n")
+        choice = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
+        while choice not in "1,2,3,q,Q":
+            choice = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
+        if choice.lower() in "q,Q":
+            sys.exit()
+        if choice in "1,2,3":
+            config['Options']['Encryption'] = choice
+        choice = ""
+        print("\n\ndamnJournal features a preview of each journal entry. Based on the encryption scheme above, you want to disbale this.\n\n"
+              "1. Enabled\n"
+              "2. Disabled\n\n")
+        choice = str(raw_input("Please choose 1, 2, or Q to quit: "))
+        while choice not in "1,2":
+            choice = str(raw_input("Please choose 1, 2, or Q to quit: "))
+        if choice.lower() in "q,Q":
+            sys.exit()
+        if choice in "1":
+            config['Options']['Preview'] = "On"
+        else:
+            config['Options']['Preview'] = "Off"
+        print("Configuration complete. Writing configuration file now.")
+        with open(config_file, 'w') as configfile:
+            config.write(configfile)
+
 
 def main(screen):
     screen = curses.initscr()
@@ -56,22 +95,22 @@ def main(screen):
         if (key_press == "e" or key_press == "E") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
-            tmpfile = '/tmp/dj_' + tmp_generate()
+            tmpfile = '{}dj_{}'.format(temp_directory, tmp_generate())
             if os.path.isfile(filename):
-                openfile = open(filename, 'r')
-                contents = decrypt(password, openfile.read()) # Get contents of current file
-                openfile.close()
-                openfile = open(tmpfile, 'w')
+                openfile = open(filename, 'r') # Start working with the current file, as exists in the configuration directory
+                contents = decrypt(password, openfile.read())
+                openfile.close() # Close the current file
+                openfile = open(tmpfile, 'w')  # Open the temporary file, write the contents of the current file into it for editing
                 openfile.write(contents)
-                openfile.close()
-                os.system("editor " + tmpfile)
-                openfile = open(tmpfile, 'r')
+                openfile.close() # Close the temporary file
+                os.system("editor " + tmpfile) # Edit the temporary file in the system editor
+                openfile = open(tmpfile, 'r') # Open the temporary file, read the contents, encrypt it, and then write to the current file
                 contents = encrypt(password, openfile.read())
                 openfile.close()
                 openfile = open(filename, 'w')
                 openfile.write(contents)
-                openfile.close()
-                os.system("rm -f {}".format(tmpfile))
+                openfile.close() # Close the file
+                os.system("rm -f {}".format(tmpfile)) # Clean up the temp directory
             else:
                 openfile = open(tmpfile, 'w')
                 openfile.write("")
@@ -288,21 +327,8 @@ def main(screen):
                 for i in range(0, len(contents)):
                     formatted_contents = formatted_contents + str.splitlines(contents[i])
                 # textbox = [word for line in contents for word in line.split()]
-                wordwrap = 1
-                line = 35
-                col = 3
-                # 
-                # for i in range(0, len(textbox)):
-                #     wordwrap += len(textbox[i]) + 1
-                #     if wordwrap > 85:
-                #         line += 1
-                #         wordwrap = 0
-                #         col = 3
-                #     if line < max_y:
-                #         screen.addstr(line, col, str(textbox[i]))
-                #         col += len(textbox[i]) + 1
                 for i in range(0, len(formatted_contents)):
-                    if i < 20:
+                    if i in range(0, max_y - 36):
                         screen.addstr(i + 36, 3, formatted_contents[i])
             else:
                 screen.addstr(33, 1,
@@ -314,22 +340,47 @@ def main(screen):
     screen.clear()
 
 
+
+# Check the configuration
+conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
+temp_directory = conf_directory + "tmp/"
+config_file = conf_directory + "damnJournal.ini"
+
+config = configparser.ConfigParser()
+config.read(config_file)
+
 # Check for first run items.
 
 # Check if configuration directory exists. If not, run the first run greeter.
-conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
 if not os.path.isdir(conf_directory):
     print("Welcome to damnJournal, of the Crass Office Suite. As a one time process, "
-          "we are creating a configuration directory at {}").format(conf_directory)
+          "we are creating a configuration directory at {}\n").format(conf_directory)
     os.makedirs(conf_directory)
+if not os.path.isdir(temp_directory):
+    print("We also creating a temporary working directory at {}\n").format(temp_directory)
+    os.makedirs(conf_directory + 'tmp/')
     if not os.path.isdir(conf_directory):
-        print("Something went wrong. Please ensure damnJournal is running with permissions"
+        print("Something went wrong. Please ensure damnJournal is running with permissions "
               "to create {}".format(conf_directory))
+    if not os.path.isdir(temp_directory):
+        print("Something went wrong. Please ensure damnJournal is running with permissions "
+              "to create {}".format(temp_directory))
+
+if not os.path.isfile(config_file) and "--configure" not in sys.argv:
+    print("damnJournal does not have a configuration file. We will now exit. Please run damnJournal with "
+          "the following argument: python damnJournal.py --configure")
+    sys.exit()
+
+if not os.path.isfile(config_file) and "--configure" in sys.argv:
+    configure(False)
+    print("First run configuration complete. Exiting to system.")
+    sys.exit()
+
 
 # Check if password file exists. If not, set the password.
 passwd_file = conf_directory + "00000000.dat"
 if not os.path.isfile(passwd_file):
-    print("damnJournal will password protect and encode your journal entries. Please make a secure note of this"
+    print("damnJournal will password protect and encode your journal entries. Please make a secure note of this "
           "password, as it can not be recovered under any circumstances.")
     print("")
     pass1 = str(getpass.getpass(prompt='Password: '))
@@ -348,11 +399,7 @@ if not os.path.isfile(passwd_file):
         openfile.write(encrypted_data)
         openfile.close
         openfile = open(conf_directory + "20180513.dat", 'w')
-        sample_entry = """Dear Diary,
-
-Today I was pompous and my sister was crazy. Today we were kidnapped by hillfolk never to be seen again.
-
-It was the best day ever."""
+        sample_entry = "Dear Diary,\n\nToday I was pompous and my sister was crazy. Today we were kidnapped by hillfolk never to be seen again.\n\nIt was the best day ever."
         encrypted_data = encrypt(password, sample_entry)
         openfile.write(encrypted_data)
         openfile.close
