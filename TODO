@@ -2,4 +2,5 @@
 * One-Time Entry Preview Keybinding when previews are disabled
 * Entry Spellchecking
 * On-screen or Key-accessible help
+* Nicer, possibly curses-based, configuration menu
 * Win the Lotto
