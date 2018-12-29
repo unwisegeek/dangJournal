@@ -1,8 +1,47 @@
 
-import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt
+import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile
+from time import sleep
 from curses import wrapper
 from curses.textpad import rectangle
 from simplecrypt import encrypt, decrypt
+
+# Define global variables
+password = ""
+conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
+temp_directory = conf_directory + "tmp/"
+passwd_file = conf_directory + "00000000.dat"
+config_file = conf_directory + "damnJournal.ini"
+config = configparser.ConfigParser()
+encryption_types = ["Plaintext", "Encoded", "Encrypted"]
+
+def get_password(override=0):
+    global password
+    if config['Options']['Encryption'] == "3" or override == 1:
+        openfile = open(passwd_file, 'r') # Open the password file.
+        enc_data = openfile.read() # Read the encoded data.
+        openfile.close() # Filestream is no longer needed. Closing.
+
+        password = getpass.getpass() # Prompt for the passowrd.
+        # Check the password against the confirmation file. If not, reprompt three times.
+        reprompt = 0
+        confirmed = decrypt(password, enc_data)
+
+        while confirmed != "Confirmed":
+            try:
+                confirmed = decrypt(password, enc_data)
+            except simplecrypt.DecryptionException:
+                print("Password incorrect.")
+                confirmed = ""
+                reprompt += 1
+            if confirmed is not "Confirmed" and reprompt < 3:
+                reprompt = reprompt + 1
+                print("Password incorrect. Retry count: {}").format(str(reprompt))
+                password = str(getpass.getpass())
+            else:
+                print("Failed to enter the correct password. Exiting.")
+                sys.exit()
+    else:
+        password = ""
 
 def dimensions(chkscreen):
     chkscreen = curses.initscr()
@@ -17,12 +56,216 @@ def dimensions(chkscreen):
 def tmp_generate(size=5, chars=string.ascii_lowercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
-def configure( config_exists):
-    choice = ""
-    if config_exists:
-        print("Not quite yet.")
-    else:
-        config = configparser.ConfigParser()
+def encode(password, type, text):
+    if str(type) == "1":
+        return text
+    if str(type) == "2":
+        return base64.encodestring(text)
+    if str(type) == "3":
+        return encrypt(password, text)
+
+def decode(password, type, text):
+    if str(type) == "1":
+        return text
+    if str(type) == "2":
+        return base64.decodestring(text)
+    if str(type) == "3":
+        return decrypt(password, text)
+
+def config_backup():
+    # Backup the conf_directory
+    # Create a timestamp
+    timestamp = int((datetime.datetime(1970,1,1,0,0,0) - datetime.datetime.utcnow()).total_seconds()) * - 1
+    backup_files = conf_directory + "bak/" + "djbackup-" + str(timestamp) + ".tar.gz"
+    # command = "tar czf " + backup_files + " " + conf_directory + " &> /dev/null"
+    print("Creating a backup at {}.".format(backup_files))
+    # os.system(command)
+    tar = tarfile.open(backup_files, "w:gz")
+    # Get a list of files in the config directory
+    files = os.listdir(conf_directory)
+    for file in files:
+        if ".dat" in file[-4:] or ".ini" in file[-4:]:
+            tar.add(conf_directory + file)
+    tar.close()
+
+def make_passwd_file():
+    global password
+    # passwd_file = conf_directory + "00000000.dat"
+    global passwd_file
+    print("damnJournal will password protect and encode your journal entries. Please make a secure note of this "
+          "password, as it can not be recovered under any circumstances.")
+    print("")
+    pass1 = str(getpass.getpass(prompt='New Password: '))
+    pass2 = str(getpass.getpass(prompt='Confirm Password: '))
+    while pass1 != pass2:
+        print("Passwords do not match. Please try again.")
+        print("")
+        pass1 = str(getpass.getpass(prompt='New Password: '))
+        pass2 = str(getpass.getpass(prompt='Confirm Password: '))
+    # We now have matching passwords. Write the encrypted password to the passwd_file location
+    password = pass1
+    encrypted_data = encode(password, "3", "Confirmed")
+    try:
+        openfile = open(passwd_file, 'w')
+        openfile.write(encrypted_data)
+        openfile.close
+    except IOError:
+        print("Unable to write to {}. Please check the directory permissions and try again.").format(conf_directory)
+        sys.exit()
+
+
+def migrate(oldconfig, newconfig):
+    global password
+    print("Switching encryption from {} to {}.".format(encryption_types[int(oldconfig) - 1], encryption_types[int(newconfig) - 1]))
+    # Make a backup of all config files
+    config_backup()
+    sleep(2)
+    # Get a list of files in the config directory
+    files = os.listdir(conf_directory)
+    datfiles = [] 
+    # Parse the list so there are only .dat files that aren't 00000000.dat
+    for file in files:
+        if ".dat" in file[-4:] and file != "00000000.dat":
+            datfiles += [ file ]
+    if oldconfig == "1": # Plaintext to...
+        if newconfig == "2": # ...Base64
+            for file in datfiles:
+                openfile = open(conf_directory + "/" + file, 'r') # Open the file to be migrated for reading/writing
+                contents = openfile.read() # Read the encoded file contents
+                openfile.close()
+                decoded_contents = decode(password, 1, contents) # Decode the contents with the old encoding scheme
+                encoded_contents = encode(password, 2, decoded_contents) # Encode the decoded contents with the new encoding scheme
+                openfile = open(conf_directory + "/" + file, 'w') # Open the file to be migrated for reading/writing
+                openfile.write(encoded_contents) # Write the new encoded contents to the file
+                openfile.close() # Close the filestream
+        if newconfig == "3": # ...Simple-Crypt
+            if os.path.isfile(passwd_file):
+                choice = ""
+                while choice.lower() != "y" and choice.lower() != "n":
+                    choice = str(raw_input("We found a password already defined. Keep this password? (y/n) "))
+                if choice == "n":
+                    # Make a new 00000000.dat file
+                    make_passwd_file()
+                if choice == "y":
+                        get_password(1)
+            else:
+                # Make a new 00000000.dat file
+                make_passwd_file()
+            # Password file is created. Migrate the files.
+            for file in datfiles:
+                openfile = open(conf_directory + "/" + file, 'r') # Open the file to be migrated for reading/writing
+                contents = openfile.read() # Read the encoded file contents
+                openfile.close()
+                decoded_contents = decode("", 1, contents) # Decode the contents with the old encoding scheme
+                encoded_contents = encode(password, 3, decoded_contents) # Encode the decoded contents with the new encoding scheme
+                openfile = open(conf_directory + "/" + file, 'w') # Open the file to be migrated for reading/writing
+                openfile.write(encoded_contents) # Write the new encoded contents to the file
+                openfile.close() # Close the filestream
+
+    if oldconfig == "2": # Base64 to...
+        if newconfig == "1": # ...Plaintext
+            for file in datfiles:
+                openfile = open(conf_directory + "/" + file, 'r') # Open the file to be migrated for reading/writing
+                contents = openfile.read() # Read the encoded file contents
+                openfile.close()
+                decoded_contents = decode(password, 2, contents) # Decode the contents with the old encoding scheme
+                encoded_contents = encode(password, 1, decoded_contents) # Encode the decoded contents with the new encoding scheme
+                openfile = open(conf_directory + "/" + file, 'w') # Open the file to be migrated for reading/writing
+                openfile.write(encoded_contents) # Write the new encoded contents to the file
+                openfile.close() # Close the filestream
+        if newconfig == "3": # ...Simple-Crypt
+            if os.path.isfile(passwd_file):
+                choice = ""
+                while choice.lower() != "y" and choice.lower() != "n":
+                    choice = str(raw_input("We found a password already defined. Keep this password? (y/n) "))
+                if choice == "n":
+                    # Make a new 00000000.dat file
+                    make_passwd_file()
+                if choice == "y":
+                        get_password(1)
+            else:
+                # Make a new 00000000.dat file
+                make_passwd_file()            # Password file is created. Migrate the files.
+
+            for file in datfiles:
+                openfile = open(conf_directory + "/" + file, 'r') # Open the file to be migrated for reading/writing
+                contents = openfile.read() # Read the encoded file contents
+                decoded_contents = decode("", 2, contents) # Decode the contents with the old encoding scheme
+                encoded_contents = encode(password, 3, decoded_contents) # Encode the decoded contents with the new encoding scheme
+                openfile = open(conf_directory + "/" + file, 'w') # Open the file to be migrated for reading/writing
+                openfile.write(encoded_contents) # Write the new encoded contents to the file
+                openfile.close() # Close the filestream
+
+    if oldconfig == "3": # Simple-Crypt to...
+        # Get the password for decryption functions.
+        get_password(1)
+        if newconfig == "1": # ...Plaintext
+            for file in datfiles:
+                openfile = open(conf_directory + "/" + file, 'r') # Open the file to be migrated for reading/writing
+                contents = openfile.read() # Read the encoded file contents
+                openfile.close()
+                decoded_contents = decode(password, 3, contents) # Decode the contents with the old encoding scheme
+                encoded_contents = encode("", 1, decoded_contents) # Encode the decoded contents with the new encoding scheme
+                openfile = open(conf_directory + "/" + file, 'w') # Open the file to be migrated for reading/writing
+                openfile.write(encoded_contents) # Write the new encoded contents to the file
+                openfile.close() # Close the filestream
+        if newconfig == "2": # ...Base64
+            for file in datfiles:
+                openfile = open(conf_directory + "/" + file, 'r') # Open the file to be migrated for reading/writing
+                contents = openfile.read() # Read the encoded file contents
+                openfile.close()
+                decoded_contents = decode(password, 3, contents) # Decode the contents with the old encoding scheme
+                encoded_contents = encode("", 2, decoded_contents) # Encode the decoded contents with the new encoding scheme
+                openfile = open(conf_directory + "/" + file, 'w') # Open the file to be migrated for reading/writing
+                openfile.write(encoded_contents) # Write the new encoded contents to the file
+                openfile.close() # Close the filestream
+
+def configure(config_exists):
+    global config
+    if config_exists: # Configuration exists.
+        curencryption = config['Options']['Encryption']
+        choice = [0, 0]
+        print("Starting configuration.\n\ndamnJournal has three different methods by which to store your journal entries.\n\n"
+              "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
+              "2. Encoded.....Base64 encoded. Protects only against the most casual of attacks.\n"
+              "3. Encrypted...AES encryption based on the simple-crypt library. Much slower. Previews are recommended turned off.\n\n")
+        print("Current Selection: {}".format(encryption_types[int(curencryption) - 1]))
+        choice[0] = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
+        if choice[0].lower() == "q":
+            sys.exit()
+        if choice[0] in "1,2,3":
+            newencryption = choice[0]
+            if curencryption != newencryption:
+                print("Applying changes, backing up current entries, migrating entries, and exiting to system.")
+                config['Options']['Encryption'] = choice[0]
+                migrate(curencryption, newencryption)
+                with open(config_file, 'w') as configfile:
+                    config.write(configfile)
+                sys.exit()
+        else:
+            print("Invalid entry. Aborting.")
+            sys.exit()
+        print("\n\ndamnJournal features a preview of each journal entry. Based on the encryption scheme above, you want to disbale this.\n\n"
+              "1. Enabled\n"
+              "2. Disabled\n\n")
+        print("Current Selection: {}".format(config['Options']['Preview']))
+        while choice[1] not in "12qQ":
+            choice[1] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+        if choice[1] in "1":
+            config['Options']['Preview'] = "On"
+        elif choice[1] in "2":
+            config['Options']['Preview'] = "Off"
+        elif choice[1].lower() in "q":
+            sys.exit()
+        else:
+            print("Error. Exiting to system.")
+            sys.exit()
+        print("Configuration complete. Writing configuration file now.")
+        with open(config_file, 'w') as configfile:
+            config.write(configfile)
+
+    else: # Configuration does not exist. Fresh start.
+        choice = ["0", "0"]
         config['Options'] = {}
         print("Starting configuration.\n\ndamnJournal has three different methods by which to store your journal entries.\n\n"
               "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
@@ -30,26 +273,39 @@ def configure( config_exists):
               "3. Encrypted...AES encryption based on the simple-crypt library. Much slower. Previews are recommended turned off.\n\n"
               "Once decided, all future operations with damnJournal will depend on this setting. Please read the manual for guidance on \n"
               "how to migreate from one entry schema to another.\n")
-        choice = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
-        while choice not in "1,2,3,q,Q":
-            choice = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
-        if choice.lower() in "q,Q":
+        while str(choice[0]) in "0":
+            choice[0] = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
+        if choice[0].lower() in "q":
             sys.exit()
-        if choice in "1,2,3":
-            config['Options']['Encryption'] = choice
-        choice = ""
+        elif choice[0] in "1,2,3":
+            encopt = int(choice[0])
+            config['Options']['Encryption'] = str(encopt)
+        elif choice[0] == "3": # Special process for Encrypted journals
+            passwd_file = conf_directory + "00000000.dat"
+            make_passwd_file()
+        else:
+            print("No valid input detected. Exiting.")
+            sys.exit()
+
+        openfile = open(conf_directory + "20180513.dat", 'w')
+        sample_entry = "Dear Diary,\n\nToday I was pompous and my sister was crazy. Today we were kidnapped by hillfolk never to be seen again.\n\nIt was the best day ever."
+        encrypted_data = encode(password, encopt, sample_entry)
+        openfile.write(encrypted_data)
+        openfile.close
         print("\n\ndamnJournal features a preview of each journal entry. Based on the encryption scheme above, you want to disbale this.\n\n"
               "1. Enabled\n"
               "2. Disabled\n\n")
-        choice = str(raw_input("Please choose 1, 2, or Q to quit: "))
-        while choice not in "1,2":
-            choice = str(raw_input("Please choose 1, 2, or Q to quit: "))
-        if choice.lower() in "q,Q":
+        while str(choice[1]) in "0":
+            choice[1] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+        if choice[1].lower() in "q,Q":
             sys.exit()
-        if choice in "1":
+        elif choice[1] in "1":
             config['Options']['Preview'] = "On"
-        else:
+        elif coice[1] in "2":
             config['Options']['Preview'] = "Off"
+        else:
+            print("No valid input detected. Exiting.")
+            sys.exit()
         print("Configuration complete. Writing configuration file now.")
         with open(config_file, 'w') as configfile:
             config.write(configfile)
@@ -60,7 +316,6 @@ def main(screen):
     curses.start_color()
     curses.use_default_colors()
     screen.keypad(True)
-
 
     # Set variables and create the calendar
     max_x = curses.COLS - 1
@@ -98,14 +353,14 @@ def main(screen):
             tmpfile = '{}dj_{}'.format(temp_directory, tmp_generate())
             if os.path.isfile(filename):
                 openfile = open(filename, 'r') # Start working with the current file, as exists in the configuration directory
-                contents = decrypt(password, openfile.read())
+                contents = decode(password, enctype, openfile.read())
                 openfile.close() # Close the current file
                 openfile = open(tmpfile, 'w')  # Open the temporary file, write the contents of the current file into it for editing
                 openfile.write(contents)
                 openfile.close() # Close the temporary file
                 os.system("editor " + tmpfile) # Edit the temporary file in the system editor
                 openfile = open(tmpfile, 'r') # Open the temporary file, read the contents, encrypt it, and then write to the current file
-                contents = encrypt(password, openfile.read())
+                contents = encode(password, enctype, openfile.read())
                 openfile.close()
                 openfile = open(filename, 'w')
                 openfile.write(contents)
@@ -117,7 +372,7 @@ def main(screen):
                 openfile.close()
                 os.system("editor " + tmpfile)
                 openfile = open(tmpfile, 'r')
-                contents = encrypt(password, openfile.read())
+                contents = encode(password, enctype, openfile.read())
                 openfile.close()
                 openfile = open(filename, 'w')
                 openfile.write(contents)
@@ -317,12 +572,12 @@ def main(screen):
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             datestamp = cal_month[cursor_position[0]] + " " + str(current_day) + ", " + str(cal_year)
-            if os.path.isfile(filename):
+            if os.path.isfile(filename) and config['Options']['Preview'] == "On":
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp), curses.color_pair(3))
                 rectangle(screen, 34, 0, max_y, 95)
                 openfile = open(filename, 'r')
-                contents = textwrap.wrap(decrypt(password, openfile.read()), width = 85, replace_whitespace = False)
+                contents = textwrap.wrap(decode(password, enctype, openfile.read()), width = 85, replace_whitespace = False)
                 formatted_contents = []
                 for i in range(0, len(contents)):
                     formatted_contents = formatted_contents + str.splitlines(contents[i])
@@ -342,12 +597,12 @@ def main(screen):
 
 
 # Check the configuration
-conf_directory = os.environ['HOME'] + "/.damnJournal/"  # type: object
-temp_directory = conf_directory + "tmp/"
-config_file = conf_directory + "damnJournal.ini"
-
-config = configparser.ConfigParser()
 config.read(config_file)
+
+try:
+    enctype = config['Options']['Encryption']
+except KeyError:
+    print("No configuration setting for encryption found. Have your ran damnJournal with the --configure flag?")
 
 # Check for first run items.
 
@@ -357,8 +612,9 @@ if not os.path.isdir(conf_directory):
           "we are creating a configuration directory at {}\n").format(conf_directory)
     os.makedirs(conf_directory)
 if not os.path.isdir(temp_directory):
-    print("We also creating a temporary working directory at {}\n").format(temp_directory)
+    print("We also creating a temporary and backup directory at {}\n").format(temp_directory)
     os.makedirs(conf_directory + 'tmp/')
+    os.makedirs(conf_directory + 'bak/')
     if not os.path.isdir(conf_directory):
         print("Something went wrong. Please ensure damnJournal is running with permissions "
               "to create {}".format(conf_directory))
@@ -371,70 +627,20 @@ if not os.path.isfile(config_file) and "--configure" not in sys.argv:
           "the following argument: python damnJournal.py --configure")
     sys.exit()
 
-if not os.path.isfile(config_file) and "--configure" in sys.argv:
-    configure(False)
-    print("First run configuration complete. Exiting to system.")
+if "--configure" in sys.argv:
+    configure(os.path.isfile(config_file))
     sys.exit()
 
-
-# Check if password file exists. If not, set the password.
-passwd_file = conf_directory + "00000000.dat"
-if not os.path.isfile(passwd_file):
-    print("damnJournal will password protect and encode your journal entries. Please make a secure note of this "
-          "password, as it can not be recovered under any circumstances.")
-    print("")
-    pass1 = str(getpass.getpass(prompt='Password: '))
-    pass2 = str(getpass.getpass(prompt='Confirm Password: '))
-    while pass1 != pass2:
-        print("Passwords do not match. Please try again.")
-	print("")
-        pass1 = str(getpass.getpass(prompt='Password: '))
-        pass2 = str(getpass.getpass(prompt='Confirm Password: '))
-    # We now have matching passwords. Write the encrypted password to the passwd_file location
-
-    password = pass1
-    encrypted_data = encrypt(password, "Confirmed")
-    try:
-        openfile = open(passwd_file, 'w')
-        openfile.write(encrypted_data)
-        openfile.close
-        openfile = open(conf_directory + "20180513.dat", 'w')
-        sample_entry = "Dear Diary,\n\nToday I was pompous and my sister was crazy. Today we were kidnapped by hillfolk never to be seen again.\n\nIt was the best day ever."
-        encrypted_data = encrypt(password, sample_entry)
-        openfile.write(encrypted_data)
-        openfile.close
-    except IOError:
-	print("Unable to write to {}. Please check the directory permissions and try again.").format(conf_directory)
-        sys.exit()
-    print("First run tasks complete. damnJournal will now exit.")
+if "--backup" in sys.argv:
+    config_backup()
     sys.exit()
 
 
 # Check the Password, start by opening the password file and pulling in the encrypted data.
-openfile = open(passwd_file, 'r') # Open the password file.
-enc_data = openfile.read() # Read the encoded data.
-openfile.close() # Filestream is no longer needed. Closing.
-
-password = getpass.getpass() # Prompt for the passowrd.
-# Check the password against the confirmation file. If not, reprompt three times.
-reprompt = 0
-
-confirmed = decrypt(password, enc_data)
-
-while confirmed != "Confirmed":
-    try:
-        confirmed = decrypt(password, enc_data)
-    except simplecrypt.DecryptionException:
-        print("Password incorrect.")
-        confirmed = ""
-        reprompt += 1
-    if confirmed is not "Confirmed" and reprompt < 3:
-        reprompt = reprompt + 1
-        print("Password incorrect. Retry count: {}").format(str(reprompt))
-        password = str(getpass.getpass())
-    else:
-        print("Failed to enter the correct password. Exiting.")
-        sys.exit()
+if config['Options']['Encryption'] == "3":
+    get_password()
+else:
+    password = ""
 
 
 if dimensions:
