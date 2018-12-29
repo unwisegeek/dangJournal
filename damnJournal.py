@@ -614,21 +614,21 @@ if not os.path.isdir(conf_directory):
 if not os.path.isdir(temp_directory):
     print("We also creating a temporary and backup directory at {}\n").format(temp_directory)
     os.makedirs(conf_directory + 'tmp/')
-if not os.path.isdir(conf_directory + 'bak/')
+if not os.path.isdir(conf_directory + 'bak/'):
     print("Creating directory for backups.")
     os.makedirs(conf_directory + 'bak/')
     if not os.path.isdir(conf_directory):
         print("Something went wrong. Please ensure damnJournal is running with permissions "
               "to create {}".format(conf_directory))
-              sys.exit()
+        sys.exit()
     if not os.path.isdir(temp_directory):
         print("Something went wrong. Please ensure damnJournal is running with permissions "
               "to create {}".format(temp_directory))
-              sys.exit()
+        sys.exit()
     if not os.path.isdir(conf_directory + 'bak/'):
         print("Something went wrong. Please ensure damnJournal is running with permissions "
               "to create {}".format(temp_directory))
-              sys.exit()
+        sys.exit()
 
 if not os.path.isfile(config_file) and "--configure" not in sys.argv:
     print("damnJournal does not have a configuration file. We will now exit. Please run damnJournal with "
