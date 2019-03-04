@@ -1,9 +1,8 @@
-
 import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile
 from time import sleep
 from curses import wrapper
 from curses.textpad import rectangle
-from simplecrypt import encrypt, decrypt
+from cryptography.fernet import Fernet
 
 # Define global variables
 password = ""
@@ -12,7 +11,9 @@ temp_directory = conf_directory + "tmp/"
 passwd_file = conf_directory + "00000000.dat"
 config_file = conf_directory + "damnJournal.ini"
 config = configparser.ConfigParser()
+config.read(config_file)
 encryption_types = ["Plaintext", "Encoded", "Encrypted"]
+help_msg = "--configure - Launches configuration utility.\n--backup - Backs up current database."
 
 def get_password(override=0):
     global password
@@ -24,7 +25,7 @@ def get_password(override=0):
         password = getpass.getpass() # Prompt for the passowrd.
         # Check the password against the confirmation file. If not, reprompt three times.
         reprompt = 0
-        confirmed = decrypt(password, enc_data)
+        confirmed = decode(password, "3", enc_data)
 
         while confirmed != "Confirmed":
             try:
@@ -62,7 +63,12 @@ def encode(password, type, text):
     if str(type) == "2":
         return base64.encodestring(text)
     if str(type) == "3":
-        return encrypt(password, text)
+        key = password
+        while len(key) < 32:
+           key += "0"
+        cipher_key = base64.encodestring(key)
+        cipher = Fernet(cipher_key)
+        return cipher.encrypt(text)
 
 def decode(password, type, text):
     if str(type) == "1":
@@ -70,7 +76,12 @@ def decode(password, type, text):
     if str(type) == "2":
         return base64.decodestring(text)
     if str(type) == "3":
-        return decrypt(password, text)
+        key = password
+        while len(key) < 32:
+           key += "0"
+        cipher_key = base64.encodestring(key)
+        cipher = Fernet(cipher_key)
+        return cipher.decrypt(text)
 
 def config_backup():
     # Backup the conf_directory
@@ -224,11 +235,11 @@ def configure(config_exists):
     global config
     if config_exists: # Configuration exists.
         curencryption = config['Options']['Encryption']
-        choice = [0, 0]
+        choice = ["0", "0"]
         print("Starting configuration.\n\ndamnJournal has three different methods by which to store your journal entries.\n\n"
               "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
               "2. Encoded.....Base64 encoded. Protects only against the most casual of attacks.\n"
-              "3. Encrypted...AES encryption based on the simple-crypt library. Much slower. Previews are recommended turned off.\n\n")
+              "3. Encrypted...AES encryption based on the Python Cryptography library.\n\n")
         print("Current Selection: {}".format(encryption_types[int(curencryption) - 1]))
         choice[0] = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
         if choice[0].lower() == "q":
@@ -249,7 +260,7 @@ def configure(config_exists):
               "1. Enabled\n"
               "2. Disabled\n\n")
         print("Current Selection: {}".format(config['Options']['Preview']))
-        while choice[1] not in "12qQ":
+        while choice[1] not in "12Qq":
             choice[1] = str(raw_input("Please choose 1, 2, or Q to quit: "))
         if choice[1] in "1":
             config['Options']['Preview'] = "On"
@@ -270,17 +281,19 @@ def configure(config_exists):
         print("Starting configuration.\n\ndamnJournal has three different methods by which to store your journal entries.\n\n"
               "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
               "2. Encoded.....Base64 encoded. Protects only against the most casual of attacks.\n"
-              "3. Encrypted...AES encryption based on the simple-crypt library. Much slower. Previews are recommended turned off.\n\n"
+              "3. Encrypted...AES encryption based on the Python Cryptography library.\n\n"
               "Once decided, all future operations with damnJournal will depend on this setting. Please read the manual for guidance on \n"
               "how to migreate from one entry schema to another.\n")
         while str(choice[0]) in "0":
             choice[0] = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
         if choice[0].lower() in "q":
             sys.exit()
-        elif choice[0] in "1,2,3":
+        elif choice[0] in "1,2":
             encopt = int(choice[0])
             config['Options']['Encryption'] = str(encopt)
-        elif choice[0] == "3": # Special process for Encrypted journals
+        elif choice[0] in "3": # Special process for Encrypted journals
+            encopt = int(choice[0])
+            config['Options']['Encryption'] = str(encopt)
             passwd_file = conf_directory + "00000000.dat"
             make_passwd_file()
         else:
@@ -301,7 +314,7 @@ def configure(config_exists):
             sys.exit()
         elif choice[1] in "1":
             config['Options']['Preview'] = "On"
-        elif coice[1] in "2":
+        elif choice[1] in "2":
             config['Options']['Preview'] = "Off"
         else:
             print("No valid input detected. Exiting.")
@@ -471,6 +484,12 @@ def main(screen):
                 else:
                     cursor_position[1] -= 1
 
+	if key_press == "P" or key_press == "p": # Manage the temporary preview on/off key press
+           if config['Options']['Preview'] == "On":
+              config['Options']['Preview'] = "Off"
+           elif config['Options']['Preview'] == "Off":
+              config['Options']['Preview'] = "On"
+
         # Once key_press is processed, make one last test of cursor position to ensure there is no Index Error
         if cursor_position[1] > -1:
             try:
@@ -596,9 +615,6 @@ def main(screen):
 
 
 
-# Check the configuration
-config.read(config_file)
-
 try:
     enctype = config['Options']['Encryption']
 except KeyError:
@@ -641,6 +657,10 @@ if "--configure" in sys.argv:
 
 if "--backup" in sys.argv:
     config_backup()
+    sys.exit()
+
+if "--help" in sys.argv:
+    print(help_msg)
     sys.exit()
 
 
