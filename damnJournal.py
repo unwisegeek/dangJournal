@@ -1,4 +1,6 @@
-import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile
+#!/usr/bin/python
+
+import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile, subprocess
 from time import sleep
 from curses import wrapper
 from curses.textpad import rectangle
@@ -235,7 +237,7 @@ def configure(config_exists):
     global config
     if config_exists: # Configuration exists.
         curencryption = config['Options']['Encryption']
-        choice = ["0", "0"]
+        choice = ["0", "0", "0", "0"]
         print("Starting configuration.\n\ndamnJournal has three different methods by which to store your journal entries.\n\n"
               "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
               "2. Encoded.....Base64 encoded. Protects only against the most casual of attacks.\n"
@@ -271,12 +273,48 @@ def configure(config_exists):
         else:
             print("Error. Exiting to system.")
             sys.exit()
+        print("\n\ndamnJournal can use the default system text editor, linked to the 'editor' command, or a custom command can be entered.\n\n"
+              "1. Use Default System Text Editor\n"
+              "2. Custom Editor Commander\n\n")
+        while str(choice[2]) not in "123Qq":
+           choice[2] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+           if choice[2].lower() in "q":
+               sys.exit()
+           if choice[2] in "1": 
+               output = subprocess.Popen("which editor", stdout=subprocess.PIPE, shell=True)
+               result = output.stdout.read()
+               result = result.strip('\n')
+               if result == "":
+                  print("Editor command not defined. Switching to custom editor command.")
+                  choice[2] = "2"
+               else:
+                  print("Using default system text editor located at " + result)
+                  config['Options']['Editor'] = result
+                  break
+           if choice[2] in "2": 
+               result = ""
+               while choice[3] == "0" or result == "":
+                   choice[3] = str(raw_input("Please enter the custom editor command or Q to quit: "))
+                   if choice[3].lower() in "q":
+                      sys.exit()
+                   elif choice[3] != "":
+                      output = subprocess.Popen("which " + choice[3], stdout=subprocess.PIPE, shell=True)
+                      result = output.stdout.read()
+                      result = result.strip('\n')
+                      if result == "":
+                         print("No command called " + choice[3] + " found.")
+               print("Using " + result + " to edit journal entries.")
+               config['Options']['Editor'] = result
+               break
+        else:
+            print("No valid input detected. Exiting.")
+            sys.exit()
         print("Configuration complete. Writing configuration file now.")
         with open(config_file, 'w') as configfile:
             config.write(configfile)
 
     else: # Configuration does not exist. Fresh start.
-        choice = ["0", "0"]
+        choice = ["0", "0", "0", "0"]
         config['Options'] = {}
         print("Starting configuration.\n\ndamnJournal has three different methods by which to store your journal entries.\n\n"
               "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
@@ -310,12 +348,48 @@ def configure(config_exists):
               "2. Disabled\n\n")
         while str(choice[1]) in "0":
             choice[1] = str(raw_input("Please choose 1, 2, or Q to quit: "))
-        if choice[1].lower() in "q,Q":
+        if choice[1].lower() in "q":
             sys.exit()
         elif choice[1] in "1":
             config['Options']['Preview'] = "On"
         elif choice[1] in "2":
             config['Options']['Preview'] = "Off"
+        else:
+            print("No valid input detected. Exiting.")
+            sys.exit()
+        print("\n\ndamnJournal can use the default system text editor, linked to the 'editor' command, or a custom command can be entered.\n\n"
+              "1. Use Default System Text Editor\n"
+              "2. Custom Editor Commander\n\n")
+        while str(choice[2]) not in "12Qq":
+           choice[2] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+           if choice[2].lower() in "q":
+               sys.exit()
+           if choice[2] in "1": 
+               output = subprocess.Popen("which editor", stdout=subprocess.PIPE, shell=True)
+               result = output.stdout.read()
+               result = result.strip('\n')
+               if result == "":
+                  print("Editor command not defined. Switching to custom editor command.")
+                  choice[2] = "2"
+               else:
+                  print("Using default system text editor located at " + result)
+                  config['Options']['Editor'] = result
+                  break
+           elif choice[2] in "2": 
+               result = ""
+               while choice[3] == "0" or result == "":
+                   choice[3] = str(raw_input("Please enter the custom editor command or Q to quit: "))
+                   if choice[3].lower() in "q":
+                      sys.exit()
+                   elif choice[3] != "":
+                      output = subprocess.Popen("which " + choice[3], stdout=subprocess.PIPE, shell=True)
+                      result = output.stdout.read()
+                      result = result.strip('\n')
+                      if result == "":
+                         print("No command called " + choice[3] + " found.")
+               print("Using " + result + " to edit journal entries.")
+               config['Options']['Editor'] = result
+               break
         else:
             print("No valid input detected. Exiting.")
             sys.exit()
@@ -371,7 +445,7 @@ def main(screen):
                 openfile = open(tmpfile, 'w')  # Open the temporary file, write the contents of the current file into it for editing
                 openfile.write(contents)
                 openfile.close() # Close the temporary file
-                os.system("editor " + tmpfile) # Edit the temporary file in the system editor
+                os.system(edit_cmd + " " + tmpfile) # Edit the temporary file in the system editor
                 openfile = open(tmpfile, 'r') # Open the temporary file, read the contents, encrypt it, and then write to the current file
                 contents = encode(password, enctype, openfile.read())
                 openfile.close()
@@ -383,7 +457,7 @@ def main(screen):
                 openfile = open(tmpfile, 'w')
                 openfile.write("")
                 openfile.close()
-                os.system("editor " + tmpfile)
+                os.system(edit_cmd + " " + tmpfile)
                 openfile = open(tmpfile, 'r')
                 contents = encode(password, enctype, openfile.read())
                 openfile.close()
@@ -418,7 +492,7 @@ def main(screen):
             if key_press[4] == "7" and cal_year < 100:
                 cal_year = 1
 
-        if key_press == "KEY_RIGHT" or key_press == "C":  # Manages the Right Arrow key press
+        if key_press == "KEY_RIGHT" or key_press.lower() == "l" or key_press == "C":  # Manages the Right Arrow key press
             if cursor_position[1] == -2 and cal_year < 9999:  # Selector is on Year
                 cal_year += 1
                 year = cal.yeardayscalendar(cal_year, 12)
@@ -428,7 +502,7 @@ def main(screen):
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
                 cursor_position[2] += 1
 
-        if key_press == "KEY_LEFT" or key_press == "D":  # Manages the Left Arrow key press
+        if key_press == "KEY_LEFT" or key_press.lower() == "j" or key_press == "D":  # Manages the Left Arrow key press
             if cursor_position[1] == -2 and cal_year > 1:  # Selector is on Year
                 cal_year -= 1
                 year = cal.yeardayscalendar(cal_year, 12)
@@ -438,7 +512,7 @@ def main(screen):
                 tmp_cursor_position = [cursor_position[0], cursor_position[1], cursor_position[2]]
                 cursor_position[2] -= 1
 
-        if key_press == "KEY_DOWN" or key_press == "B":  # Manages the Down Arrow key press
+        if key_press == "KEY_DOWN" or key_press.lower() == "k" or key_press == "B":  # Manages the Down Arrow key press
             if cursor_position[0] == -2:
                 if tmp_cursor_month != 0:
                     cursor_position = [tmp_cursor_month, -1, -1]
@@ -468,7 +542,7 @@ def main(screen):
                 except:  # If anything goes awry, return to last known good cursor location
                     cursor_position = tmp_cursor_position
 
-        if key_press == "KEY_UP" or key_press == "A":  # Manages the Up Arrow key press
+        if key_press == "KEY_UP" or key_press.lower() == "i" or key_press == "A":  # Manages the Up Arrow key press
             if cursor_position[0] > -1 and cursor_position[1] == 0:
                 cursor_position[1] = -1
                 cursor_position[2] = -1
@@ -586,7 +660,7 @@ def main(screen):
             screen.addstr(1, 1, "{:^94s}".format("<    " + str(cal_year) + "    >"))
 
         if cursor_position[1] > -1:
-            rectangle(screen, 32, 0, 34, 95)
+            # rectangle(screen, 32, 0, 34, 95)
             current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
@@ -608,6 +682,15 @@ def main(screen):
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp))
 
+        # Add on-screen configuration display
+	if config['Options']['Preview'] == "On":
+           screen.addstr(33, 90, "PrOn", curses.color_pair(3))
+        if config['Options']['Preview'] == "Off":
+           screen.addstr(33, 90, "PrOff", curses.color_pair(3))
+
+        # Add additional rectangle regardless of active date in the calendar
+        rectangle(screen, 32, 0, 34, 95)
+
         # Calendar draw is done, refresh, get a key press, and get out
         screen.refresh()
         key_press = screen.getkey()
@@ -617,6 +700,7 @@ def main(screen):
 
 try:
     enctype = config['Options']['Encryption']
+    edit_cmd = config['Options']['Editor']
 except KeyError:
     print("No configuration setting for encryption found. Have your ran damnJournal with the --configure flag?")
 
