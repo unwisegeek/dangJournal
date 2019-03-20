@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile, subprocess
 from time import sleep
 from curses import wrapper
