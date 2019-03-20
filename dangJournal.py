@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile, subprocess
+import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile, subprocess, textstat
 from time import sleep
 from curses import wrapper
 from curses.textpad import rectangle
@@ -16,6 +16,20 @@ config = configparser.ConfigParser()
 config.read(config_file)
 encryption_types = ["Plaintext", "Encoded", "Encrypted"]
 help_msg = "--configure - Launches configuration utility.\n--backup - Backs up current database."
+
+
+
+#THIS IS WHERE MY FUNCTION WILL GO
+def get_stats(filetext):
+    stat_data = []
+    raw_data = ""
+    for line in filetext:
+        raw_data = raw_data + line.strip()
+    word_tuple = tuple(raw_data.split(" "))
+    word_count = len(word_tuple)
+    stat_data += [ word_count ]
+    return str(stat_data)
+        
 
 def get_password(override=0):
     global password
@@ -437,6 +451,7 @@ def main(screen):
         if (key_press == "e" or key_press == "E") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
+            stat_file = "{}{:0>4}{:0>2}{:0>2}.stat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
             tmpfile = '{}dj_{}'.format(temp_directory, tmp_generate())
             if os.path.isfile(filename):
                 openfile = open(filename, 'r') # Start working with the current file, as exists in the configuration directory
@@ -447,8 +462,15 @@ def main(screen):
                 openfile.close() # Close the temporary file
                 os.system(edit_cmd + " " + tmpfile) # Edit the temporary file in the system editor
                 openfile = open(tmpfile, 'r') # Open the temporary file, read the contents, encrypt it, and then write to the current file
+		#MY CODE WILL GO HERE!!
+                statistics = get_stats(openfile.read())
+                stat_contents = encode(password, enctype, statistics)
                 contents = encode(password, enctype, openfile.read())
                 openfile.close()
+                openfile = open(stat_file, 'w')
+                openfile.write(stat_contents)
+                openfile.close()
+                breakpoint = raw_input("Press Enter")
                 openfile = open(filename, 'w')
                 openfile.write(contents)
                 openfile.close() # Close the file
