@@ -24,12 +24,11 @@ def get_stats(filetext):
     stat_data = []
     raw_data = ""
     for line in filetext:
-        raw_data = raw_data + line.strip()
+        raw_data = raw_data + line.strip("\n")
     word_tuple = tuple(raw_data.split(" "))
     word_count = len(word_tuple)
     stat_data += [ word_count ]
     return str(stat_data)
-        
 
 def get_password(override=0):
     global password
@@ -470,7 +469,6 @@ def main(screen):
                 openfile = open(stat_file, 'w')
                 openfile.write(stat_contents)
                 openfile.close()
-                breakpoint = raw_input("Press Enter")
                 openfile = open(filename, 'w')
                 openfile.write(contents)
                 openfile.close() # Close the file
