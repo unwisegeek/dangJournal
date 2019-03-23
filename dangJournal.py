@@ -147,10 +147,10 @@ def migrate(oldconfig, newconfig):
     sleep(2)
     # Get a list of files in the config directory
     files = os.listdir(conf_directory)
-    datfiles = [] 
+    datfiles = []
     # Parse the list so there are only .dat files that aren't 00000000.dat
     for file in files:
-        if ".dat" in file[-4:] and file != "00000000.dat":
+        if (".dat" in file[-4:] or ".name" in file[-5:] or "stat" in file[-5:]) and file != "00000000.dat":
             datfiles += [ file ]
     if oldconfig == "1": # Plaintext to...
         if newconfig == "2": # ...Base64
@@ -221,7 +221,7 @@ def migrate(oldconfig, newconfig):
                 openfile.write(encoded_contents) # Write the new encoded contents to the file
                 openfile.close() # Close the filestream
 
-    if oldconfig == "3": # Simple-Crypt to...
+    if oldconfig == "3": # Fernet to...
         # Get the password for decryption functions.
         get_password(1)
         if newconfig == "1": # ...Plaintext
@@ -504,7 +504,7 @@ def main(screen):
 
         if (key_press == "t" or key_press == "T") and cursor_position[1] >= 0: # Manage Title Function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
-            titlename = "{}{:0>4}{:0>2}{:0>2}.title".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
+            titlename = "{}{:0>4}{:0>2}{:0>2}.name".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
             tmpfile = '{}dj_{}'.format(temp_directory, tmp_generate())
             if os.path.isfile(titlename):
                 openfile = open(titlename, 'r')
@@ -752,7 +752,7 @@ def main(screen):
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             statfile = "{}{:0>4}{:0>2}{:0>2}.stat".format(
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
-            titlefile = "{}{:0>4}{:0>2}{:0>2}.title".format(
+            titlefile = "{}{:0>4}{:0>2}{:0>2}.name".format(
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             datestamp = cal_month[cursor_position[0]] + " " + str(current_day) + ", " + str(cal_year)
             if os.path.isfile(filename) and config['Options']['Preview'] == "On" and config['Options']['StatPanel'] == "Off" and config['Options']['HelpPanel'] == "Off":
