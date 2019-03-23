@@ -440,6 +440,7 @@ def main(screen):
     infopanel = 0
     curses.init_pair(2, 0, 7)
     curses.init_pair(3, 6, 0)
+    config['Options']['HelpPanel'] = "Off" # Start with the Help Panel Off
 
     while key_press != "q" and key_press != "Q":
 
@@ -452,11 +453,6 @@ def main(screen):
             cursor_position = [-2, -2, -2]
             tmp_cursor_position = [-2, -2, -2]
 
-        if key_press == "s" or key_press == "S":
-            if config['Options']['StatPanel'] == "Off":
-                config['Options']['StatPanel'] = "On"
-            else:
-                config['Options']['StatPanel'] = "Off"
 
         if (key_press == "e" or key_press == "E") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
@@ -602,6 +598,24 @@ def main(screen):
               config['Options']['Preview'] = "Off"
            elif config['Options']['Preview'] == "Off":
               config['Options']['Preview'] = "On"
+              config['Options']['StatPanel'] = "Off"
+              config['Options']['HelpPanel'] = "Off"
+
+        if key_press.lower() == "h":
+           if config['Options']['HelpPanel'] == "On":
+              config['Options']['HelpPanel'] = "Off"
+           elif config['Options']['HelpPanel'] == "Off":
+              config['Options']['HelpPanel'] = "On"
+              config['Options']['Preview'] = "Off"
+              config['Options']['StatPanel'] = "Off"
+
+        if key_press == "s" or key_press == "S":
+            if config['Options']['StatPanel'] == "On":
+                config['Options']['StatPanel'] = "Off"
+            elif config['Options']['StatPanel'] == "Off":
+                config['Options']['StatPanel'] = "On"
+                config['Options']['HelpPanel'] = "Off"
+                config['Options']['Preview'] = "Off"
 
         # Once key_press is processed, make one last test of cursor position to ensure there is no Index Error
         if cursor_position[1] > -1:
@@ -706,7 +720,7 @@ def main(screen):
             statfile = "{}{:0>4}{:0>2}{:0>2}.stat".format(
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             datestamp = cal_month[cursor_position[0]] + " " + str(current_day) + ", " + str(cal_year)
-            if os.path.isfile(filename) and config['Options']['Preview'] == "On" and config['Options']['StatPanel'] == "Off":
+            if os.path.isfile(filename) and config['Options']['Preview'] == "On" and config['Options']['StatPanel'] == "Off" and config['Options']['HelpPanel'] == "Off":
                     screen.addstr(33, 1,
                                   "{:^94s}".format(datestamp), curses.color_pair(3))
                     rectangle(screen, 34, 0, max_y, 95)
@@ -719,7 +733,7 @@ def main(screen):
                     for i in range(0, len(formatted_contents)):
                         if i in range(0, max_y - 36):
                             screen.addstr(i + 36, 3, formatted_contents[i])
-            elif os.path.isfile(statfile) and config['Options']['StatPanel'] == "On":
+            elif os.path.isfile(statfile) and config['Options']['StatPanel'] == "On" and config['Options']['HelpPanel'] == "Off":
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp))
                 statinfo = []
@@ -735,6 +749,13 @@ def main(screen):
                 for i in range(0, len(formatted_stats)):
                     if i in range(0, max_y - 36):
                         screen.addstr(i + 36, 3, formatted_stats[i])
+            elif config['Options']['HelpPanel'] == "On" and config['Options']['StatPanel'] == "Off":
+               screen.addstr(33, 1,"{:^94s}".format("Help Screen"))
+               rectangle(screen, 34, 0, max_y, 95)
+               help_text = [ 'Navigation - Starting with the year, use left and right to', 'scroll to the correct year. Press down to move cursor to','month. Use left and right to select month. Press down to','move cursor to days of month, and use left/right/up/and/down','to navigate. Use Up arrow to return to month or year.','','Q - Quit the dangJournal at any time (except when editing)','Y - Return to Year Selector','E - Edit an entry in your currently configured editor','R - Deletes an Entry','U - Undeletes an Entry (will get overwritten by subsequent deletes)','','  Up /i/A - Cursor Up',' Down/k/B - Cursor Down',' Left/j/D - Cursor Left','Right/l/C - Cursor Right','','P - Toggle Preview Pane','S - Toggle Statistics Pane','H - Toggle this Help Pane','','','Report bugs at https://www.github.com/unwisegeek/dangjournal/issues' ]
+               for i in range(0, len(help_text)):
+                  if i in range(0, max_y - 36):
+                     screen.addstr(i + 36, 3, help_text[i])
             else:
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp))
