@@ -2,7 +2,7 @@
 import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile, subprocess, textstat
 from time import sleep
 from curses import wrapper
-from curses.textpad import rectangle
+from curses.textpad import rectangle, Textbox
 from cryptography.fernet import Fernet
 
 # Define global variables
@@ -15,7 +15,6 @@ config = configparser.ConfigParser()
 config.read(config_file)
 encryption_types = ["Plaintext", "Encoded", "Encrypted"]
 help_msg = "--configure - Launches configuration utility.\n--backup - Backs up current database."
-
 
 
 #THIS IS WHERE MY FUNCTION WILL GO
@@ -441,6 +440,8 @@ def main(screen):
     curses.init_pair(2, 0, 7)
     curses.init_pair(3, 6, 0)
     config['Options']['HelpPanel'] = "Off" # Start with the Help Panel Off
+    dateloc = "Top"
+
 
     while key_press != "q" and key_press != "Q":
 
@@ -498,6 +499,38 @@ def main(screen):
                 openfile.close()
                 openfile = open(stat_file, 'w')
                 openfile.write(stat_contents)
+                openfile.close()
+                os.system("rm -f {}".format(tmpfile))
+
+        if (key_press == "t" or key_press == "T") and cursor_position[1] >= 0: # Manage Title Function
+            day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
+            titlename = "{}{:0>4}{:0>2}{:0>2}.title".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
+            tmpfile = '{}dj_{}'.format(temp_directory, tmp_generate())
+            if os.path.isfile(titlename):
+                openfile = open(titlename, 'r')
+                contents = decode(password, enctype, openfile.read())
+                openfile.close()
+                openfile = open(tmpfile, 'w')
+                openfile.write(contents)
+                openfile.close()
+                os.system(edit_cmd + " " + tmpfile)
+                openfile = open(tmpfile, 'r')
+                contents = encode(password, enctype, openfile.read())
+                openfile.close()
+                openfile = open(titlename, 'w')
+                openfile.write(contents)
+                openfile.close()
+                os.system("rm -f {}".format(tmpfile))
+            else:
+                openfile = open(tmpfile, 'w')
+                openfile.write("")
+                openfile.close()
+                os.system(edit_cmd + " " + tmpfile)
+                openfile = open(tmpfile, 'r') 
+                contents = encode(password, enctype, openfile.read())
+                openfile.close()
+                openfile = open(titlename, 'w')
+                openfile.write(contents)
                 openfile.close()
                 os.system("rm -f {}".format(tmpfile))
 
@@ -719,25 +752,42 @@ def main(screen):
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             statfile = "{}{:0>4}{:0>2}{:0>2}.stat".format(
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
+            titlefile = "{}{:0>4}{:0>2}{:0>2}.title".format(
+                conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             datestamp = cal_month[cursor_position[0]] + " " + str(current_day) + ", " + str(cal_year)
             if os.path.isfile(filename) and config['Options']['Preview'] == "On" and config['Options']['StatPanel'] == "Off" and config['Options']['HelpPanel'] == "Off":
-                    screen.addstr(33, 1,
-                                  "{:^94s}".format(datestamp), curses.color_pair(3))
-                    rectangle(screen, 34, 0, max_y, 95)
+                    rectangle(screen, max_y - 2, 0, max_y, 95) # Draw the rectangle for the date in preview mode
+                    ## screen.addstr(33, 1,
+                    ##               "{:^94s}".format(datestamp), curses.color_pair(3))
+                    rectangle(screen, 34, 0, max_y - 2, 95) # Draw the rectangle for the title in preview mode
                     openfile = open(filename, 'r')
-                    contents = textwrap.wrap(decode(password, enctype, openfile.read()), width = 85, replace_whitespace = False)
+                    filedata = decode(password, enctype, openfile.read())
+                    contents = textwrap.wrap(filedata, width = 90, replace_whitespace = True)
+                    openfile.close()
                     formatted_contents = []
                     for i in range(0, len(contents)):
                         formatted_contents = formatted_contents + str.splitlines(contents[i])
                     # textbox = [word for line in contents for word in line.split()]
                     for i in range(0, len(formatted_contents)):
-                        if i in range(0, max_y - 36):
-                            screen.addstr(i + 36, 3, formatted_contents[i])
-            elif os.path.isfile(statfile) and config['Options']['StatPanel'] == "On" and config['Options']['HelpPanel'] == "Off":
-                screen.addstr(33, 1,
-                              "{:^94s}".format(datestamp))
+                        if i in range(0, max_y - 37):
+                            screen.addstr(i + 35, 3, formatted_contents[i])
+                    if os.path.isfile(titlefile):
+                        dateloc = "Bottom"
+                        openfile = open(titlefile, 'r')
+                        titledata = decode(password, enctype, openfile.read())
+                        screen.addstr(33, 1, "{:^94s}".format(titledata.strip("\n")), curses.color_pair(3))
+                        screen.addstr(max_y - 1, 1, "{:^94s}".format(datestamp), curses.color_pair(3))
+                    elif not os.path.isfile(titlefile):
+                        dateloc = "Bottom"
+                        screen.addstr(33, 1, "{:^94s}".format("Untitled"), curses.color_pair(3))
+                        screen.addstr(max_y - 1, 1, "{:^94s}".format(datestamp), curses.color_pair(3))
+
+            elif os.path.isfile(statfile) and config['Options']['StatPanel'] == "On" and config['Options']['HelpPanel'] == "Off" and config['Options']['Preview'] == "Off":
+                rectangle(screen, max_y - 2, 0, max_y, 95) # Draw the rectangle for the date in preview mode
+                # screen.addstr(33, 1,
+                #               "{:^94s}".format(datestamp))
                 statinfo = []
-                rectangle(screen, 34, 0, max_y, 95)
+                rectangle(screen, 34, 0, max_y - 2, 95)
                 openfile = open(statfile, 'r')
                 filedata = decode(password, enctype, openfile.read())
                 openfile.close()
@@ -749,14 +799,25 @@ def main(screen):
                 for i in range(0, len(formatted_stats)):
                     if i in range(0, max_y - 36):
                         screen.addstr(i + 36, 3, formatted_stats[i])
-            elif config['Options']['HelpPanel'] == "On" and config['Options']['StatPanel'] == "Off":
+                if os.path.isfile(titlefile):
+                    dateloc = "Bottom"
+                    openfile = open(titlefile, 'r')
+                    titledata = decode(password, enctype, openfile.read())
+                    screen.addstr(33, 1, "{:^94s}".format(titledata.strip("\n")), curses.color_pair(3))
+                    screen.addstr(max_y - 1, 1, "{:^94s}".format(datestamp), curses.color_pair(3))
+                elif not os.path.isfile(titlefile):
+                    dateloc = "Bottom"
+                    screen.addstr(33, 1, "{:^94s}".format("Untitled"), curses.color_pair(3))
+                    screen.addstr(max_y - 1, 1, "{:^94s}".format(datestamp), curses.color_pair(3))
+            elif config['Options']['HelpPanel'] == "On" and config['Options']['StatPanel'] == "Off" and config['Options']['Preview'] == "Off":
                screen.addstr(33, 1,"{:^94s}".format("Help Screen"))
-               rectangle(screen, 34, 0, max_y, 95)
+               rectangle(screen, 34, 0, max_y - 3, 95)
                help_text = [ 'Navigation - Starting with the year, use left and right to', 'scroll to the correct year. Press down to move cursor to','month. Use left and right to select month. Press down to','move cursor to days of month, and use left/right/up/and/down','to navigate. Use Up arrow to return to month or year.','','Q - Quit the dangJournal at any time (except when editing)','Y - Return to Year Selector','E - Edit an entry in your currently configured editor','R - Deletes an Entry','U - Undeletes an Entry (will get overwritten by subsequent deletes)','','  Up /i/A - Cursor Up',' Down/k/B - Cursor Down',' Left/j/D - Cursor Left','Right/l/C - Cursor Right','','P - Toggle Preview Pane','S - Toggle Statistics Pane','H - Toggle this Help Pane','','','Report bugs at https://www.github.com/unwisegeek/dangjournal/issues' ]
                for i in range(0, len(help_text)):
                   if i in range(0, max_y - 36):
                      screen.addstr(i + 36, 3, help_text[i])
             else:
+                dateloc = "Top"
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp))
 
@@ -776,7 +837,10 @@ def main(screen):
 
 
         # Write the Status Window String
-        screen.addstr(33, 94 - len(status), status, curses.color_pair(3))
+        if dateloc == "Bottom":
+            screen.addstr(max_y - 1, 94 - len(status), status, curses.color_pair(3))
+        else:
+            screen.addstr(33, 94 - len(status), status, curses.color_pair(3))
 
         # Add additional rectangle regardless of active date in the calendar
         rectangle(screen, 32, 0, 34, 95)
