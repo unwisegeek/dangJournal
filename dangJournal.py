@@ -1,5 +1,10 @@
 #!/usr/bin/python
+<<<<<<< HEAD
 import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile, subprocess
+=======
+
+import curses, calendar, datetime, os, sys, getpass, textwrap, string, random, base64, configparser, getopt, tarfile, subprocess, textstat
+>>>>>>> statistics
 from time import sleep
 from curses import wrapper
 from curses.textpad import rectangle
@@ -15,6 +20,20 @@ config = configparser.ConfigParser()
 config.read(config_file)
 encryption_types = ["Plaintext", "Encoded", "Encrypted"]
 help_msg = "--configure - Launches configuration utility.\n--backup - Backs up current database."
+
+
+
+#THIS IS WHERE MY FUNCTION WILL GO
+def get_stats(filetext):
+    stat_data = ""
+    raw_data = ""
+    for line in filetext:
+        raw_data = raw_data + line.strip("\n")
+    word_tuple = tuple(raw_data.split(" "))
+    word_count = len(word_tuple)
+    stat_data += str(word_count) + ";"
+    stat_data += "NFD" # Always add this last before returning stat_data
+    return stat_data
 
 def get_password(override=0):
     global password
@@ -265,8 +284,10 @@ def configure(config_exists):
             choice[1] = str(raw_input("Please choose 1, 2, or Q to quit: "))
         if choice[1] in "1":
             config['Options']['Preview'] = "On"
+            config['Options']['StatPanel'] = "Off"
         elif choice[1] in "2":
             config['Options']['Preview'] = "Off"
+            config['Options']['StatPanel'] = "Off"
         elif choice[1].lower() in "q":
             sys.exit()
         else:
@@ -351,8 +372,10 @@ def configure(config_exists):
             sys.exit()
         elif choice[1] in "1":
             config['Options']['Preview'] = "On"
+            config['Options']['StatPanel'] = "Off"
         elif choice[1] in "2":
             config['Options']['Preview'] = "Off"
+            config['Options']['StatPanel'] = "Off"
         else:
             print("No valid input detected. Exiting.")
             sys.exit()
@@ -419,6 +442,7 @@ def main(screen):
                  "November", "December"]  # List of names to draw on for Calendar months
     days_of_week = " Mo Tu We Th Fr Sa Su"  # String to be printed for each calendar
     conf_directory = os.environ['HOME'] + "/.dangJournal/"  # type: object
+    infopanel = 0
     curses.init_pair(2, 0, 7)
     curses.init_pair(3, 6, 0)
 
@@ -433,9 +457,16 @@ def main(screen):
             cursor_position = [-2, -2, -2]
             tmp_cursor_position = [-2, -2, -2]
 
+        if key_press == "s" or key_press == "S":
+            if config['Options']['StatPanel'] == "Off":
+                config['Options']['StatPanel'] = "On"
+            else:
+                config['Options']['StatPanel'] = "Off"
+
         if (key_press == "e" or key_press == "E") and cursor_position[1] >= 0:  # Manages Edit function
             day = str(year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]])
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
+            stat_file = "{}{:0>4}{:0>2}{:0>2}.stat".format(conf_directory, str(cal_year), str(cursor_position[0] + 1), str(day))
             tmpfile = '{}dj_{}'.format(temp_directory, tmp_generate())
             if os.path.isfile(filename):
                 openfile = open(filename, 'r') # Start working with the current file, as exists in the configuration directory
@@ -446,7 +477,15 @@ def main(screen):
                 openfile.close() # Close the temporary file
                 os.system(edit_cmd + " " + tmpfile) # Edit the temporary file in the system editor
                 openfile = open(tmpfile, 'r') # Open the temporary file, read the contents, encrypt it, and then write to the current file
-                contents = encode(password, enctype, openfile.read())
+                filedata = openfile.read()
+                openfile.close()
+		#MY CODE WILL GO HERE!!
+                statistics = get_stats(filedata)
+                stat_contents = encode(password, enctype, statistics)
+                contents = encode(password, enctype, filedata)
+                openfile.close()
+                openfile = open(stat_file, 'w')
+                openfile.write(str(stat_contents))
                 openfile.close()
                 openfile = open(filename, 'w')
                 openfile.write(contents)
@@ -458,10 +497,16 @@ def main(screen):
                 openfile.close()
                 os.system(edit_cmd + " " + tmpfile)
                 openfile = open(tmpfile, 'r')
-                contents = encode(password, enctype, openfile.read())
+                filedata = openfile.read()
+                statistics = get_stats(filedata)
+                contents = encode(password, enctype, filedata)
+                stat_contents = encode(password, enctype, filedata)
                 openfile.close()
                 openfile = open(filename, 'w')
                 openfile.write(contents)
+                openfile.close()
+                openfile = open(stat_file, 'w')
+                openfile.write(stat_contents)
                 openfile.close()
                 os.system("rm -f {}".format(tmpfile))
 
@@ -663,29 +708,59 @@ def main(screen):
             current_day = year[0][cursor_position[0]][cursor_position[1]][cursor_position[2]]
             filename = "{}{:0>4}{:0>2}{:0>2}.dat".format(
                 conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
+            statfile = "{}{:0>4}{:0>2}{:0>2}.stat".format(
+                conf_directory, str(cal_year), str(cursor_position[0] + 1), str(current_day))
             datestamp = cal_month[cursor_position[0]] + " " + str(current_day) + ", " + str(cal_year)
-            if os.path.isfile(filename) and config['Options']['Preview'] == "On":
+            if os.path.isfile(filename) and config['Options']['Preview'] == "On" and config['Options']['StatPanel'] == "Off":
+                    screen.addstr(33, 1,
+                                  "{:^94s}".format(datestamp), curses.color_pair(3))
+                    rectangle(screen, 34, 0, max_y, 95)
+                    openfile = open(filename, 'r')
+                    contents = textwrap.wrap(decode(password, enctype, openfile.read()), width = 85, replace_whitespace = False)
+                    formatted_contents = []
+                    for i in range(0, len(contents)):
+                        formatted_contents = formatted_contents + str.splitlines(contents[i])
+                    # textbox = [word for line in contents for word in line.split()]
+                    for i in range(0, len(formatted_contents)):
+                        if i in range(0, max_y - 36):
+                            screen.addstr(i + 36, 3, formatted_contents[i])
+            elif os.path.isfile(statfile) and config['Options']['StatPanel'] == "On":
                 screen.addstr(33, 1,
-                              "{:^94s}".format(datestamp), curses.color_pair(3))
+                              "{:^94s}".format(datestamp))
+                statinfo = []
                 rectangle(screen, 34, 0, max_y, 95)
-                openfile = open(filename, 'r')
-                contents = textwrap.wrap(decode(password, enctype, openfile.read()), width = 85, replace_whitespace = False)
-                formatted_contents = []
-                for i in range(0, len(contents)):
-                    formatted_contents = formatted_contents + str.splitlines(contents[i])
-                # textbox = [word for line in contents for word in line.split()]
-                for i in range(0, len(formatted_contents)):
+                openfile = open(statfile, 'r')
+                filedata = decode(password, enctype, openfile.read())
+                openfile.close()
+                statistics = filedata.split(";")
+                statinfo += [ "Word Count: {}".format(statistics[0]) ]
+                formatted_stats = []
+                for i in range(0, len(statinfo)):
+                    formatted_stats = formatted_stats + str.splitlines(statinfo[i])
+                for i in range(0, len(formatted_stats)):
                     if i in range(0, max_y - 36):
-                        screen.addstr(i + 36, 3, formatted_contents[i])
+                        screen.addstr(i + 36, 3, formatted_stats[i])
             else:
                 screen.addstr(33, 1,
                               "{:^94s}".format(datestamp))
 
+        # Begin status window string creation
+        status = ""
+
         # Add on-screen configuration display
 	if config['Options']['Preview'] == "On":
-           screen.addstr(33, 90, "PrOn", curses.color_pair(3))
-        if config['Options']['Preview'] == "Off":
-           screen.addstr(33, 90, "PrOff", curses.color_pair(3))
+           status += " PrOn"
+        else:
+           status += " PrOff"
+
+        if config['Options']['StatPanel'] == "On":
+            status += " StOn"
+        else:
+            status += " StOff"
+
+
+        # Write the Status Window String
+        screen.addstr(33, 94 - len(status), status, curses.color_pair(3))
 
         # Add additional rectangle regardless of active date in the calendar
         rectangle(screen, 32, 0, 34, 95)
