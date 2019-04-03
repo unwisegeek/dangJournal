@@ -15,6 +15,7 @@ config = configparser.ConfigParser()
 config.read(config_file)
 encryption_types = ["Plaintext", "Encoded", "Encrypted"]
 help_msg = "--configure - Launches configuration utility.\n--backup - Backs up current database."
+help_text = [ 'dangJournal Help', '-----------', '', 'Navigation - Starting with the year, use left and right to', 'scroll to the correct year. Press down to move cursor to','month. Use left and right to select month. Press down to','move cursor to days of month, and use left/right/up/and/down','to navigate. Use Up arrow to return to month or year.','','Q - Quit the dangJournal at any time (except when editing)','Y - Return to Year Selector','E - Edit an entry in your currently configured editor','R - Deletes an Entry','U - Undeletes an Entry (will get overwritten by subsequent deletes)','','  Up /i/A - Cursor Up',' Down/k/B - Cursor Down',' Left/j/D - Cursor Left','Right/l/C - Cursor Right','','P - Toggle Preview Pane','S - Toggle Statistics Pane','H - Toggle this Help Pane','','','Report bugs at https://www.github.com/unwisegeek/dangjournal/issues' ]
 
 
 #THIS IS WHERE MY FUNCTION WILL GO
@@ -329,6 +330,7 @@ def configure(config_exists):
 
     else: # Configuration does not exist. Fresh start.
         choice = ["0", "0", "0", "0"]
+        help_entry = ""
         config['Options'] = {}
         print("Starting configuration.\n\ndangJournal has three different methods by which to store your journal entries.\n\n"
               "1. Plaintext...Fastest of the configurations, but offers no protection for sensitive data contained within journal entries.\n"
@@ -355,6 +357,16 @@ def configure(config_exists):
         openfile = open(conf_directory + "20180513.dat", 'w')
         sample_entry = "Dear Diary,\n\nToday I was pompous and my sister was crazy. Today we were kidnapped by hillfolk never to be seen again.\n\nIt was the best day ever."
         encrypted_data = encode(password, encopt, sample_entry)
+        openfile.write(encrypted_data)
+        openfile.close
+        openfile = open(conf_directory + "20180513.name", 'w')
+        encrypted_data = encode(password, encopt, "The Hero of Canton")
+        openfile.write(encrypted_data)
+        openfile.close
+        openfile = open(conf_directory + "00000001.dat", 'w')
+        for each in help_text:
+            help_entry += str(each) + "\n"
+        encrypted_data = encode(password, 1, help_entry)
         openfile.write(encrypted_data)
         openfile.close
         print("\n\ndangJournal features a preview of each journal entry. Based on the encryption scheme above, you want to disbale this.\n\n"
@@ -650,6 +662,9 @@ def main(screen):
                 config['Options']['HelpPanel'] = "Off"
                 config['Options']['Preview'] = "Off"
 
+        if key_press == "?":
+            os.system("clear;cat {}00000001.dat | less".format(conf_directory))
+
         # Once key_press is processed, make one last test of cursor position to ensure there is no Index Error
         if cursor_position[1] > -1:
             try:
@@ -812,9 +827,8 @@ def main(screen):
             elif config['Options']['HelpPanel'] == "On" and config['Options']['StatPanel'] == "Off" and config['Options']['Preview'] == "Off":
                screen.addstr(33, 1,"{:^94s}".format("Help Screen"))
                rectangle(screen, 34, 0, max_y - 3, 95)
-               help_text = [ 'Navigation - Starting with the year, use left and right to', 'scroll to the correct year. Press down to move cursor to','month. Use left and right to select month. Press down to','move cursor to days of month, and use left/right/up/and/down','to navigate. Use Up arrow to return to month or year.','','Q - Quit the dangJournal at any time (except when editing)','Y - Return to Year Selector','E - Edit an entry in your currently configured editor','R - Deletes an Entry','U - Undeletes an Entry (will get overwritten by subsequent deletes)','','  Up /i/A - Cursor Up',' Down/k/B - Cursor Down',' Left/j/D - Cursor Left','Right/l/C - Cursor Right','','P - Toggle Preview Pane','S - Toggle Statistics Pane','H - Toggle this Help Pane','','','Report bugs at https://www.github.com/unwisegeek/dangjournal/issues' ]
                for i in range(0, len(help_text)):
-                  if i in range(0, max_y - 36):
+                  if i in range(0, max_y - 39):
                      screen.addstr(i + 36, 3, help_text[i])
             else:
                 dateloc = "Top"
