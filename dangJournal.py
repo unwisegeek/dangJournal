@@ -49,7 +49,7 @@ def get_password(override=0):
                 print("Password incorrect.")
                 confirmed = ""
                 reprompt += 1
-            if confirmed is not "Confirmed" and reprompt < 3:
+            if confirmed != "Confirmed" and reprompt < 3:
                 reprompt = reprompt + 1
                 print("Password incorrect. Retry count: {}").format(str(reprompt))
                 password = str(getpass.getpass())
@@ -81,7 +81,7 @@ def encode(password, type, text):
         key = password
         while len(key) < 32:
            key += "0"
-        cipher_key = base64.encodestring(key)
+        cipher_key = str.encode(key)
         cipher = Fernet(cipher_key)
         return cipher.encrypt(text)
 
@@ -89,7 +89,7 @@ def decode(password, type, text):
     if str(type) == "1":
         return text
     if str(type) == "2":
-        return base64.decodestring(text)
+        return str.decode(text)
     if str(type) == "3":
         key = password
         while len(key) < 32:
@@ -168,7 +168,7 @@ def migrate(oldconfig, newconfig):
             if os.path.isfile(passwd_file):
                 choice = ""
                 while choice.lower() != "y" and choice.lower() != "n":
-                    choice = str(raw_input("We found a password already defined. Keep this password? (y/n) "))
+                    choice = str(input("We found a password already defined. Keep this password? (y/n) "))
                 if choice == "n":
                     # Make a new 00000000.dat file
                     make_passwd_file()
@@ -203,7 +203,7 @@ def migrate(oldconfig, newconfig):
             if os.path.isfile(passwd_file):
                 choice = ""
                 while choice.lower() != "y" and choice.lower() != "n":
-                    choice = str(raw_input("We found a password already defined. Keep this password? (y/n) "))
+                    choice = str(input("We found a password already defined. Keep this password? (y/n) "))
                 if choice == "n":
                     # Make a new 00000000.dat file
                     make_passwd_file()
@@ -256,7 +256,7 @@ def configure(config_exists):
               "2. Encoded.....Base64 encoded. Protects only against the most casual of attacks.\n"
               "3. Encrypted...AES encryption based on the Python Cryptography library.\n\n")
         print("Current Selection: {}".format(encryption_types[int(curencryption) - 1]))
-        choice[0] = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
+        choice[0] = str(input("Please choose 1, 2, 3, or Q to quit: "))
         if choice[0].lower() == "q":
             sys.exit()
         if choice[0] in "1,2,3":
@@ -276,7 +276,7 @@ def configure(config_exists):
               "2. Disabled\n\n")
         print("Current Selection: {}".format(config['Options']['Preview']))
         while choice[1] not in "12Qq":
-            choice[1] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+            choice[1] = str(input("Please choose 1, 2, or Q to quit: "))
         if choice[1] in "1":
             config['Options']['Preview'] = "On"
             config['Options']['StatPanel'] = "Off"
@@ -292,13 +292,13 @@ def configure(config_exists):
               "1. Use Default System Text Editor\n"
               "2. Custom Editor Commander\n\n")
         while str(choice[2]) not in "123Qq":
-           choice[2] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+           choice[2] = str(input("Please choose 1, 2, or Q to quit: "))
            if choice[2].lower() in "q":
                sys.exit()
            if choice[2] in "1": 
                output = subprocess.Popen("which editor", stdout=subprocess.PIPE, shell=True)
                result = output.stdout.read()
-               result = result.strip('\n')
+               result = result.decode('utf-8').strip('\n')
                if result == "":
                   print("Editor command not defined. Switching to custom editor command.")
                   choice[2] = "2"
@@ -309,7 +309,7 @@ def configure(config_exists):
            if choice[2] in "2": 
                result = ""
                while choice[3] == "0" or result == "":
-                   choice[3] = str(raw_input("Please enter the custom editor command or Q to quit: "))
+                   choice[3] = str(input("Please enter the custom editor command or Q to quit: "))
                    if choice[3].lower() in "q":
                       sys.exit()
                    elif choice[3] != "":
@@ -339,7 +339,7 @@ def configure(config_exists):
               "Once decided, all future operations with dangJournal will depend on this setting. Please read the manual for guidance on \n"
               "how to migreate from one entry schema to another.\n")
         while str(choice[0]) in "0":
-            choice[0] = str(raw_input("Please choose 1, 2, 3, or Q to quit: "))
+            choice[0] = str(input("Please choose 1, 2, 3, or Q to quit: "))
         if choice[0].lower() in "q":
             sys.exit()
         elif choice[0] in "1,2":
@@ -373,7 +373,7 @@ def configure(config_exists):
               "1. Enabled\n"
               "2. Disabled\n\n")
         while str(choice[1]) in "0":
-            choice[1] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+            choice[1] = str(input("Please choose 1, 2, or Q to quit: "))
         if choice[1].lower() in "q":
             sys.exit()
         elif choice[1] in "1":
@@ -389,13 +389,13 @@ def configure(config_exists):
               "1. Use Default System Text Editor\n"
               "2. Custom Editor Commander\n\n")
         while str(choice[2]) not in "12Qq":
-           choice[2] = str(raw_input("Please choose 1, 2, or Q to quit: "))
+           choice[2] = str(input("Please choose 1, 2, or Q to quit: "))
            if choice[2].lower() in "q":
                sys.exit()
            if choice[2] in "1": 
                output = subprocess.Popen("which editor", stdout=subprocess.PIPE, shell=True)
                result = output.stdout.read()
-               result = result.strip('\n')
+               result = str(result).strip('\n')
                if result == "":
                   print("Editor command not defined. Switching to custom editor command.")
                   choice[2] = "2"
@@ -406,7 +406,7 @@ def configure(config_exists):
            elif choice[2] in "2": 
                result = ""
                while choice[3] == "0" or result == "":
-                   choice[3] = str(raw_input("Please enter the custom editor command or Q to quit: "))
+                   choice[3] = str(input("Please enter the custom editor command or Q to quit: "))
                    if choice[3].lower() in "q":
                       sys.exit()
                    elif choice[3] != "":
@@ -638,7 +638,7 @@ def main(screen):
                 else:
                     cursor_position[1] -= 1
 
-	if key_press == "P" or key_press == "p": # Manage the temporary preview on/off key press
+        if key_press == "P" or key_press == "p": # Manage the temporary preview on/off key press
            if config['Options']['Preview'] == "On":
               config['Options']['Preview'] = "Off"
            elif config['Options']['Preview'] == "Off":
@@ -839,7 +839,7 @@ def main(screen):
         status = ""
 
         # Add on-screen configuration display
-	if config['Options']['Preview'] == "On":
+        if config['Options']['Preview'] == "On":
            status += " PrOn"
         else:
            status += " PrOff"
@@ -868,7 +868,8 @@ def main(screen):
 
 try:
     enctype = config['Options']['Encryption']
-    edit_cmd = config['Options']['Editor']
+    edit_cmd_tmp = config['Options']['Editor']
+    edit_cmd = str(edit_cmd_tmp).strip('\n')
 except KeyError:
     print("No configuration setting for encryption found. Have your ran dangJournal with the --configure flag?")
 
@@ -877,10 +878,10 @@ except KeyError:
 # Check if configuration directory exists. If not, run the first run greeter.
 if not os.path.isdir(conf_directory):
     print("Welcome to dangJournal, of the Crass Office Suite. As a one time process, "
-          "we are creating a configuration directory at {}\n").format(conf_directory)
+          "we are creating a configuration directory at {}\n".format(conf_directory))
     os.makedirs(conf_directory)
 if not os.path.isdir(temp_directory):
-    print("We also creating a temporary and backup directory at {}\n").format(temp_directory)
+    print("We also creating a temporary and backup directory at {}\n".format(temp_directory))
     os.makedirs(conf_directory + 'tmp/')
 if not os.path.isdir(conf_directory + 'bak/'):
     print("Creating directory for backups.")

@@ -1,0 +1,10 @@
+cffi==1.14.1
+configparser==5.0.0
+cryptography==3.0
+DateTime==4.3
+pycparser==2.20
+Pyphen==0.9.5
+pytz==2020.1
+six==1.15.0
+textstat==0.6.2
+zope.interface==5.1.0
