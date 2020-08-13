@@ -59,8 +59,8 @@ def get_password(override=0):
     else:
         password = ""
 
-def dimensions(chkscreen):
-    chkscreen = curses.initscr()
+def dimensions(stdscr):
+    stdscr = curses.initscr()
     max_x = curses.COLS - 1
     max_y = curses.LINES - 1
 
@@ -461,6 +461,10 @@ def main(screen):
         if curses.is_term_resized(max_y, max_x):
             max_x = curses.COLS - 1
             max_y = curses.LINES - 1
+            while max_y < 38 or max_x < 97:
+                test = input("Screen is too small. Make the screen larger.")
+                max_x = curses.COLS - 1
+                max_y = curses.COLS - 1
 
         if key_press == "y" or key_press == "Y":  # Gives option to return to year selector in navigation
             cursor_position = [-2, -2, -2]
@@ -776,8 +780,13 @@ def main(screen):
                     ##               "{:^94s}".format(datestamp), curses.color_pair(3))
                     rectangle(screen, 34, 0, max_y - 2, 95) # Draw the rectangle for the title in preview mode
                     openfile = open(filename, 'r')
-                    filedata = decode(password, enctype, openfile.read())
-                    contents = textwrap.wrap(filedata, width = 90, replace_whitespace = True)
+                    # filedata = decode(password, enctype, openfile.read())
+                    filedata = ""
+                    filelines = decode(password, enctype, openfile.readlines())
+                    for each in range(0, len(filelines)):
+                        filedata += filelines[each]
+                    contents = textwrap.wrap(filedata, width = 90, replace_whitespace = False, drop_whitespace = False)
+                    #contents = filedata
                     openfile.close()
                     formatted_contents = []
                     for i in range(0, len(contents)):

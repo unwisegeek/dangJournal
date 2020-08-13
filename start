@@ -1,3 +1,27 @@
 #!/bin/bash
+PWD="/home/john/damnjournal/"
+cd $PWD
 source ./venv/bin/activate
+LINES=`stty size | cut -d" " -f1`
+COLS=`stty size | cut -d" " -f2`
+WAIT=0
+if [ "$LINES" -lt 50 ]; then
+    echo "The height of the screen is too small. Please expand over 50 lines."
+    WAIT=1
+fi
+if [ "$COLS" -lt 100 ]; then
+    echo "The width of the screen is too small. Please expand to over 100 columns wide."
+    WAIT=1
+fi
+if [ "$WAIT" -eq 1 ]; then
+    echo "Please change the terminal dimensions and press enter, or press Ctrl+C to exit."
+    while [ True ]; do
+        read -t 3 -n 1
+        if [ $? = 0 ]; then
+            python3 dangJournal.py
+            exit
+        fi
+    done
+fi
 python3 dangJournal.py
+exit
