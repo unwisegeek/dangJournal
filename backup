@@ -1,0 +1,6 @@
+#!/bin/bash
+PWD="/home/john/damnjournal/"
+cd $PWD
+source ./venv/bin/activate
+python dangJournal.py --backup
+exit
